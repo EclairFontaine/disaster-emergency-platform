@@ -10,7 +10,7 @@ from app.schemas.all import StatisticsResponse, IncidentResponse
 router = APIRouter(prefix="/api/statistics", tags=["数据统计"])
 
 
-@router.get("/", response_model=StatisticsResponse)
+@router.get("", response_model=StatisticsResponse)
 async def get_statistics(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),

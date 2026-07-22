@@ -11,7 +11,7 @@ from app.services.audit import get_audit_logs
 router = APIRouter(prefix="/api/audit", tags=["审计日志"])
 
 
-@router.get("/", response_model=List[AuditLogResponse])
+@router.get("", response_model=List[AuditLogResponse])
 async def list_audit_logs(
     user_id: Optional[int] = Query(None),
     resource_type: Optional[str] = Query(None),

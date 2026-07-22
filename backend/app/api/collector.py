@@ -38,6 +38,37 @@ async def get_collected_data(user: User = Depends(get_current_user)):
     return get_cached_data()
 
 
+@router.get("/status")
+async def get_collector_status(user: User = Depends(get_current_user)):
+    from app.core.config import settings
+    cached = get_cached_data()
+    return {
+        "earthquake": {
+            "name": "USGS 全球地震监测",
+            "count": len((cached.get("earthquake", {}) or {}).get("data", [])),
+            "last_fetch": (cached.get("earthquake", {}) or {}).get("time"),
+            "configured": True,
+            "status": "active",
+        },
+        "weather": {
+            "name": "气象数据",
+            "sources": {
+                "openweather": {"name": "OpenWeatherMap", "configured": bool(settings.OPENWEATHER_API_KEY)},
+                "qweather": {"name": "和风天气", "configured": bool(settings.QWEATHER_API_KEY)},
+            },
+            "count": len((cached.get("weather", {}) or {}).get("data", [])),
+            "last_fetch": (cached.get("weather", {}) or {}).get("time"),
+        },
+        "warning": {
+            "name": "国家突发事件预警",
+            "count": len((cached.get("warning", {}) or {}).get("data", [])),
+            "last_fetch": (cached.get("warning", {}) or {}).get("time"),
+            "configured": True,
+            "status": "active",
+        },
+    }
+
+
 @router.post("/ingest")
 async def ingest_collected_data(user: User = Depends(get_current_user)):
     async with AsyncSessionLocal() as db:

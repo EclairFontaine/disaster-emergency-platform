@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Row, Col, Card, Statistic, Table, Tag, Spin, Alert, Progress } from 'antd'
-import { AlertOutlined, CheckCircleOutlined, DatabaseOutlined, CarOutlined } from '@ant-design/icons'
+import { Row, Col, Card, Statistic, Table, Tag, Spin, Alert, Progress, Descriptions, Badge } from 'antd'
+import { AlertOutlined, CheckCircleOutlined, DatabaseOutlined, CarOutlined, CloudOutlined } from '@ant-design/icons'
 import MapView from '../../components/MapView'
 import { api } from '../../services/api'
 
@@ -13,13 +13,18 @@ export default function Dashboard() {
   const [stats, setStats] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [rtStatus, setRtStatus] = useState<any>(null)
 
   useEffect(() => {
-    api.getStatistics()
-      .then(setStats)
-      .catch((err) => setError(err?.response?.data?.detail || err?.message || '网络请求失败'))
-      .finally(() => setLoading(false))
+    Promise.all([
+      api.getStatistics().then(setStats),
+      fetchRealTimeStatus(),
+    ]).finally(() => setLoading(false))
   }, [])
+
+  const fetchRealTimeStatus = () => {
+    api.getCollectorStatus().then(setRtStatus).catch(() => {})
+  }
 
   if (loading) return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />
   if (!stats) return <Alert message="大屏加载失败" description={error || '请检查后端服务是否正常运行'} type="error" showIcon />
@@ -55,6 +60,48 @@ export default function Dashboard() {
               <Card><Statistic title="已调度" value={stats.dispatched_resources} prefix={<CarOutlined />} valueStyle={{ color: '#1890ff' }} /></Card>
             </Col>
           </Row>
+        </Col>
+      </Row>
+
+      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+        <Col span={24}>
+          <Card
+            title={<span><CloudOutlined style={{ marginRight: 8 }} />实时数据采集</span>}
+            extra={<Badge status="processing" text="每30分钟自动采集" />}
+            size="small"
+          >
+            <Descriptions size="small" column={4}>
+              {rtStatus?.earthquake && (
+                <Descriptions.Item label="USGS 地震监测">
+                  <Badge status={rtStatus.earthquake.last_fetch ? 'success' : 'processing'} text={rtStatus.earthquake.last_fetch ? `${rtStatus.earthquake.count}条` : '采集中'} />
+                </Descriptions.Item>
+              )}
+              {rtStatus?.weather && (
+                <>
+                  <Descriptions.Item label="和风天气">
+                    {rtStatus.weather.sources?.qweather?.configured
+                      ? <Badge status="processing" text="运行中" />
+                      : <Badge status="default" text="需配置 QWEATHER_API_KEY" />
+                    }
+                  </Descriptions.Item>
+                  <Descriptions.Item label="OpenWeatherMap">
+                    {rtStatus.weather.sources?.openweather?.configured
+                      ? <Badge status="processing" text="运行中" />
+                      : <Badge status="default" text="需配置 OPENWEATHER_API_KEY" />
+                    }
+                  </Descriptions.Item>
+                </>
+              )}
+              {rtStatus?.warning && (
+                <Descriptions.Item label="国家预警信息">
+                  <Badge status={rtStatus.warning.last_fetch ? 'success' : 'warning'} text={rtStatus.warning.last_fetch ? `${rtStatus.warning.count}条` : '未获取'} />
+                </Descriptions.Item>
+              )}
+              <Descriptions.Item label="地震最新采集">
+                {rtStatus?.earthquake?.last_fetch || '数据采集中...'}
+              </Descriptions.Item>
+            </Descriptions>
+          </Card>
         </Col>
       </Row>
 

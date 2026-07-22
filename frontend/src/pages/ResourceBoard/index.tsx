@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Card, Table, Tag, Button, Modal, Form, Input, Select, InputNumber, Space, message, Tabs, Descriptions } from 'antd'
-import { PlusOutlined } from '@ant-design/icons'
+import { Card, Table, Tag, Button, Modal, Form, Input, Select, InputNumber, Space, message, Descriptions, Steps } from 'antd'
+import { PlusOutlined, LockOutlined, SendOutlined, CheckCircleOutlined, CarOutlined, HomeOutlined, DatabaseOutlined } from '@ant-design/icons'
 import MapView from '../../components/MapView'
 import { api } from '../../services/api'
 
@@ -23,7 +23,7 @@ export default function ResourceBoard() {
 
   const loadResources = () => api.listResources().then(setResources).finally(() => setLoading(false))
   const loadOrders = () => api.listDispatchOrders().then(setOrders)
-  const loadIncidents = () => api.listIncidents({ status: 'confirmed' }).then(setIncidents)
+  const loadIncidents = () => api.listIncidents({ limit: 200 }).then(setIncidents)
 
   useEffect(() => { loadResources(); loadOrders(); loadIncidents() }, [])
 
@@ -68,14 +68,21 @@ export default function ResourceBoard() {
   const resColumns = [
     { title: '名称', dataIndex: 'name', key: 'name' },
     { title: '类型', dataIndex: 'type', key: 'type', render: (t: string) => typeLabels[t] || t },
-    { title: '可用/总量', key: 'qty', render: (_: any, r: any) => `${r.available_qty} / ${r.quantity}` },
-    { title: '已锁定', dataIndex: 'locked_qty', key: 'locked_qty' },
+    { title: '总量', dataIndex: 'quantity', key: 'quantity' },
+    { title: '可用', dataIndex: 'available_qty', key: 'available_qty' },
+    { 
+      title: '已锁定', dataIndex: 'locked_qty', key: 'locked_qty',
+      render: (v: number) => v > 0 ? <Tag color="orange">{v}</Tag> : <Tag>{v}</Tag>
+    },
     { title: '状态', dataIndex: 'status', key: 'status', render: (s: string) => <Tag color={statusColors[s]}>{s}</Tag> },
     {
       title: '操作', key: 'actions',
       render: (_: any, r: any) => (
         <Space>
-          <Button type="link" size="small" onClick={() => { setSelectedResource(r); setLockOpen(true) }}>锁定</Button>
+          <Button type="primary" size="small" disabled={r.available_qty <= r.locked_qty}
+            onClick={() => { setSelectedResource(r); lockForm.resetFields(); setLockOpen(true) }}>
+            锁定
+          </Button>
         </Space>
       ),
     },
@@ -104,6 +111,19 @@ export default function ResourceBoard() {
 
   return (
     <div>
+      <Card title="调度操作指引" size="small" style={{ marginBottom: 16, background: '#f6ffed' }}>
+        <Steps
+          size="small"
+          items={[
+            { title: '选择资源', description: '在下方资源列表找到可用资源', icon: <DatabaseOutlined /> },
+            { title: '锁定资源', description: '点击「锁定」，指定灾情和数量', icon: <LockOutlined /> },
+            { title: '创建调度', description: '新建调度单，指定目的地', icon: <SendOutlined /> },
+            { title: '审批执行', description: '批准→发出→到达确认', icon: <CheckCircleOutlined /> },
+            { title: '释放回收', description: '任务完成释放资源', icon: <HomeOutlined /> },
+          ]}
+        />
+      </Card>
+
       <Card title="资源看板" extra={<Button icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>添加资源</Button>}>
         <div style={{ marginBottom: 16 }}>
           <MapView resources={resources} height={300} />
