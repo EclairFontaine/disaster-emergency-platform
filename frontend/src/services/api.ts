@@ -100,7 +100,7 @@ export const api = {
   updatePlan: (id: number, data: any) => http.put(`/api/plans/${id}`, data).then((r) => r.data as Plan),
   deletePlan: (id: number) => http.delete(`/api/plans/${id}`),
   searchPlans: (query: string) => http.post('/api/plans/search', { query }).then((r) => r.data as Plan[]),
-  generatePlan: (incident_id: number) => http.post('/api/plans/generate/', { incident_id }).then((r) => r.data),
+  generatePlan: (incident_id: number) => http.post('/api/plans/generate', { incident_id }).then((r) => r.data),
   reviewPlan: (id: number, data: { status: string; comment?: string }) =>
     http.post(`/api/plans/${id}/review`, data).then((r) => r.data as Plan),
 
