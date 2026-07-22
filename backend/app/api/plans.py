@@ -104,7 +104,7 @@ async def search_plans_endpoint(
 async def generate_plan(
     data: PlanGenerateRequest,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_commander),
+    user: User = Depends(get_current_user),
 ):
     from app.services.agent_runner import create_agent_run
     run = await create_agent_run(db, data.incident_id, "generate", {"incident_id": data.incident_id})

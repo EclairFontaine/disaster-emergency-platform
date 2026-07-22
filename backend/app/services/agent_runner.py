@@ -137,6 +137,7 @@ async def stream_generate_plan(db: AsyncSession, incident_id: int, agent_run_id:
         )
         db.add(plan)
         await db.flush()
+        await db.commit()
 
         output_data = {"plan_id": plan.id, "plan_content": plan_content, "source_refs": source_refs}
         await finish_agent_run(db, run, output_data)

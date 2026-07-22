@@ -23,7 +23,7 @@ async def generate_plan_with_ai(db: AsyncSession, incident: Incident, agent_run:
 
         ref_text = "\n\n".join(plan_texts) if plan_texts else "暂无匹配参考预案"
         messages = [
-            {"role": "system", "content": SYSTEM_PROMPTS["generate"]},
+            {"role": "system", "content": SYSTEM_PROMPTS["generate_plan"]},
             {"role": "user", "content": f"灾情信息：\n标题：{incident.title}\n类型：{incident.category or '未知'}\n严重程度：{incident.severity}\n描述：{incident.description or ''}\n影响人数：{incident.affected_count or '未知'}\n位置：({incident.latitude}, {incident.longitude})\n\n参考预案：\n{ref_text}"},
         ]
         response = await deepseek_client.chat_completion(messages, max_tokens=4096)

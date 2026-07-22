@@ -13,9 +13,15 @@ SYSTEM_PROMPTS = {
 
 class DeepSeekClient:
     def __init__(self):
+        self.base_url = None
+        self.api_key = None
+        self._refresh_config()
+        self._client: Optional[httpx.AsyncClient] = None
+
+    def _refresh_config(self):
+        from app.core.config import settings
         self.base_url = settings.DEEPSEEK_BASE_URL.rstrip("/")
         self.api_key = settings.DEEPSEEK_API_KEY
-        self._client: Optional[httpx.AsyncClient] = None
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None:

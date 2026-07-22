@@ -1,6 +1,6 @@
 from pydantic_settings import BaseSettings
 from typing import List
-import json
+import json, os
 
 
 class Settings(BaseSettings):
@@ -23,7 +23,27 @@ class Settings(BaseSettings):
 
     class Config:
         env_file = ".env"
+        env_file_encoding = "utf-8"
         extra = "ignore"
 
 
 settings = Settings()
+# Force reload from .env if DEEPSEEK_API_KEY is default (workaround for Chinese path)
+if settings.DEEPSEEK_API_KEY == "sk-placeholder":
+    # config.py -> core/ -> app/ -> backend/
+    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".env")
+    if os.path.exists(env_path):
+        with open(env_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    k, v = line.split("=", 1)
+                    if k.strip() == "DEEPSEEK_API_KEY":
+                        settings.DEEPSEEK_API_KEY = v.strip()
+                        # Also update the deepseek client that was already created
+                        try:
+                            from app.services.deepseek import deepseek_client
+                            deepseek_client._refresh_config()
+                        except Exception:
+                            pass
+                        break
