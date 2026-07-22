@@ -1,4 +1,6 @@
-# Python
+# -----------------------------
+# Python / AI 服务
+# -----------------------------
 __pycache__/
 *.py[cod]
 *$py.class
@@ -11,28 +13,45 @@ venv/
 .env
 backend/.env
 *.log
+.pytest_cache/
 
-# Node
+# -----------------------------
+# Java / Spring Boot 业务后端 (新增)
+# -----------------------------
+target/
+*.class
+*.jar
+*.war
+.settings/
+.classpath
+.project
+
+# -----------------------------
+# Node / Vue 前端
+# -----------------------------
 node_modules/
 dist/
 
-# IDE
-.vscode/
+# -----------------------------
+# IDE 工具 (包含 PyCharm)
+# -----------------------------
 .idea/
+.vscode/
 *.swp
 *.swo
 *~
 
-# Docker
+# -----------------------------
+# Docker 数据卷映射
+# -----------------------------
 pgdata/
 milvus_data/
 etcd_data/
 minio_data/
 
-# OS
+# -----------------------------
+# OS 系统生成文件
+# -----------------------------
 .DS_Store
 Thumbs.db
-
-# Test files
-test_*.py
 
