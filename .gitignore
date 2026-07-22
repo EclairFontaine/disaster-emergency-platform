@@ -9,6 +9,8 @@ build/
 .eggs/
 venv/
 .env
+backend/.env
+*.log
 
 # Node
 node_modules/
@@ -31,5 +33,6 @@ minio_data/
 .DS_Store
 Thumbs.db
 
-# Logs
-*.log
+# Test files
+test_*.py
+
