@@ -2,11 +2,12 @@ from datetime import datetime, timezone, timedelta
 from .base import BaseCollector
 
 USGS_URL = "https://earthquake.usgs.gov/fdsnws/event/1/query"
+# 云南+周边: 覆盖中缅边境、川滇交界、东南亚地震带
 YUNNAN_BBOX = {
-    "minlatitude": 21.0,
-    "maxlatitude": 29.5,
-    "minlongitude": 97.0,
-    "maxlongitude": 107.0,
+    "minlatitude": 18.0,
+    "maxlatitude": 32.0,
+    "minlongitude": 94.0,
+    "maxlongitude": 110.0,
 }
 
 
@@ -25,7 +26,8 @@ class EarthquakeCollector(BaseCollector):
         params = {
             "format": "geojson",
             "starttime": start,
-            "minmagnitude": 2.5,
+            "minmagnitude": 1.5,
+            "limit": 200,
             "orderby": "time",
             **YUNNAN_BBOX,
         }

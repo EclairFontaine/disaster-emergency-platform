@@ -6,7 +6,7 @@ from typing import Optional, List
 import base64
 
 from app.core.database import get_db
-from app.core.security import get_current_user
+from app.core.security import get_current_user, require_reporter, require_commander
 from app.models.all import Incident, IncidentReport, User
 from app.schemas.all import (
     IncidentCreate, IncidentResponse, IncidentUpdate, IncidentStatusUpdate,
@@ -32,7 +32,7 @@ def haversine(lat1, lng1, lat2, lng2):
 async def create_incident(
     data: IncidentCreate,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_reporter),
 ):
     incident = Incident(
         title=data.title,
@@ -94,7 +94,7 @@ async def update_incident(
     incident_id: int,
     data: IncidentUpdate,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_commander),
 ):
     result = await db.execute(select(Incident).where(Incident.id == incident_id))
     incident = result.scalar_one_or_none()
@@ -117,7 +117,7 @@ async def update_status(
     incident_id: int,
     data: IncidentStatusUpdate,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_commander),
 ):
     result = await db.execute(select(Incident).where(Incident.id == incident_id))
     incident = result.scalar_one_or_none()

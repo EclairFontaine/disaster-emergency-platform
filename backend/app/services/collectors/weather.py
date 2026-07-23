@@ -38,6 +38,8 @@ class WeatherCollector(BaseCollector):
                     "condition": data.get("now", {}).get("text"),
                     "humidity": data.get("now", {}).get("humidity"),
                     "wind": data.get("now", {}).get("windDir"),
+                    "latitude": city["lat"],
+                    "longitude": city["lon"],
                     "fetch_time": now.isoformat(),
                 })
             except Exception:
