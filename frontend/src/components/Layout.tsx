@@ -76,10 +76,15 @@ export default function AppLayout() {
   return (
     <Layout>
       <Sider width={220} theme="dark" style={{ minHeight: '100vh' }}>
-        <div style={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Typography.Title level={4} style={{ color: '#fff', margin: 0, fontSize: 16 }}>
-            应急协同决策平台
-          </Typography.Title>
+        <div className="ant-logo">
+          <Space direction="vertical" size={0} align="center">
+            <Typography.Text strong style={{ color: '#fff', fontSize: 17, letterSpacing: 1 }}>
+              应急协同决策平台
+            </Typography.Text>
+            <Typography.Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12 }}>
+              Yunnan Disaster Response
+            </Typography.Text>
+          </Space>
         </div>
         <Menu
           theme="dark"

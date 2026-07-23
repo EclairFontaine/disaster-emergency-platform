@@ -116,23 +116,31 @@ export default function Dashboard() {
     <div>
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={16}>
-          <Card title="灾情态势地图" bodyStyle={{ padding: 0, height: 450 }}>
+          <Card title="灾情态势地图" styles={{ body: { padding: 0, height: 450, borderRadius: 12, overflow: 'hidden' } }}>
             <MapView incidents={stats.recent_incidents} height={450} onIncidentClick={setSelectedIncident} />
           </Card>
         </Col>
         <Col xs={24} lg={8}>
           <Row gutter={[8, 8]}>
             <Col span={12}>
-              <Card><Statistic title="总灾情数" value={stats.total_incidents} prefix={<AlertOutlined />} /></Card>
+              <Card className="stat-card stat-card-total">
+                <Statistic title="总灾情数" value={stats.total_incidents} prefix={<AlertOutlined />} />
+              </Card>
             </Col>
             <Col span={12}>
-              <Card><Statistic title="活跃灾情" value={stats.active_incidents} prefix={<CheckCircleOutlined />} valueStyle={{ color: '#cf1322' }} /></Card>
+              <Card className="stat-card stat-card-active">
+                <Statistic title="活跃灾情" value={stats.active_incidents} prefix={<CheckCircleOutlined />} valueStyle={{ color: '#cf1322' }} />
+              </Card>
             </Col>
             <Col span={12}>
-              <Card><Statistic title="可用资源" value={stats.total_resources} prefix={<DatabaseOutlined />} /></Card>
+              <Card className="stat-card stat-card-resources">
+                <Statistic title="可用资源" value={stats.total_resources} prefix={<DatabaseOutlined />} />
+              </Card>
             </Col>
             <Col span={12}>
-              <Card><Statistic title="已调度" value={stats.dispatched_resources} prefix={<CarOutlined />} valueStyle={{ color: '#1890ff' }} /></Card>
+              <Card className="stat-card stat-card-dispatched">
+                <Statistic title="已调度" value={stats.dispatched_resources} prefix={<CarOutlined />} valueStyle={{ color: '#1890ff' }} />
+              </Card>
             </Col>
           </Row>
         </Col>
