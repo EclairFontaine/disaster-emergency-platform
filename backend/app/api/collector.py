@@ -89,6 +89,16 @@ async def ingest_weather_data(user: User = Depends(get_current_user)):
     return {"status": "ok", "incidents": wx}
 
 
+@router.post("/seed-historical")
+async def seed_historical(user: User = Depends(require_admin)):
+    """补充云南历史真实灾害数据集"""
+    async with AsyncSessionLocal() as db:
+        from app.services.historical_seed import seed_historical_events
+        result = await seed_historical_events(db)
+        await db.commit()
+    return {"status": "ok", "added_events": result["events"], "added_incidents": result["incidents"]}
+
+
 @router.get("/events")
 async def list_persisted_events(
     limit: int = Query(50),
@@ -100,6 +110,7 @@ async def list_persisted_events(
     return [
         {"id":e.id,"source":e.source,"event_type":e.event_type,"title":e.title,
          "magnitude":e.magnitude,"latitude":e.latitude,"longitude":e.longitude,
+         "image_url":(e.data or {}).get("image_url","") if e.data else "",
          "created_incident_id":e.created_incident_id,
          "collected_at":e.collected_at.isoformat() if e.collected_at else None}
         for e in events
