@@ -63,10 +63,10 @@ export const api = {
     http.post('/api/auth/login', data).then((r) => r.data),
   getMe: () => http.get('/api/auth/me').then((r) => r.data),
 
-  getStatistics: () => http.get('/api/statistics/').then((r) => r.data),
+  getStatistics: () => http.get('/api/statistics').then((r) => r.data),
 
-  listIncidents: (params?: any) => http.get('/api/incidents/', { params }).then((r) => r.data as Incident[]),
-  createIncident: (data: any) => http.post('/api/incidents/', data).then((r) => r.data as Incident),
+  listIncidents: (params?: any) => http.get('/api/incidents', { params }).then((r) => r.data as Incident[]),
+  createIncident: (data: any) => http.post('/api/incidents', data).then((r) => r.data as Incident),
   getIncident: (id: number) => http.get(`/api/incidents/${id}`).then((r) => r.data as Incident),
   updateIncident: (id: number, data: any) => http.put(`/api/incidents/${id}`, data).then((r) => r.data as Incident),
   updateIncidentStatus: (id: number, data: { status: string; reason?: string }) =>
@@ -79,8 +79,8 @@ export const api = {
     const fd = new FormData(); fd.append('file', file); return http.post(`/api/incidents/${id}/upload`, fd).then((r) => r.data)
   },
 
-  listResources: (params?: any) => http.get('/api/resources/', { params }).then((r) => r.data as Resource[]),
-  createResource: (data: any) => http.post('/api/resources/', data).then((r) => r.data as Resource),
+  listResources: (params?: any) => http.get('/api/resources', { params }).then((r) => r.data as Resource[]),
+  createResource: (data: any) => http.post('/api/resources', data).then((r) => r.data as Resource),
   getResource: (id: number) => http.get(`/api/resources/${id}`).then((r) => r.data as Resource),
   updateResource: (id: number, data: any) => http.put(`/api/resources/${id}`, data).then((r) => r.data as Resource),
   deleteResource: (id: number) => http.delete(`/api/resources/${id}`),
@@ -88,14 +88,14 @@ export const api = {
     http.post(`/api/resources/${id}/lock`, data).then((r) => r.data),
   releaseResource: (id: number) => http.post(`/api/resources/${id}/release`).then((r) => r.data),
 
-  listDispatchOrders: (params?: any) => http.get('/api/dispatch-orders/', { params }).then((r) => r.data as DispatchOrder[]),
-  createDispatchOrder: (data: any) => http.post('/api/dispatch-orders/', data).then((r) => r.data as DispatchOrder),
+  listDispatchOrders: (params?: any) => http.get('/api/dispatch-orders', { params }).then((r) => r.data as DispatchOrder[]),
+  createDispatchOrder: (data: any) => http.post('/api/dispatch-orders', data).then((r) => r.data as DispatchOrder),
   getDispatchOrder: (id: number) => http.get(`/api/dispatch-orders/${id}`).then((r) => r.data as DispatchOrder),
   updateDispatchStatus: (id: number, data: { status: string }) =>
     http.put(`/api/dispatch-orders/${id}/status`, data).then((r) => r.data as DispatchOrder),
 
-  listPlans: (params?: any) => http.get('/api/plans/', { params }).then((r) => r.data as Plan[]),
-  createPlan: (data: any) => http.post('/api/plans/', data).then((r) => r.data as Plan),
+  listPlans: (params?: any) => http.get('/api/plans', { params }).then((r) => r.data as Plan[]),
+  createPlan: (data: any) => http.post('/api/plans', data).then((r) => r.data as Plan),
   getPlan: (id: number) => http.get(`/api/plans/${id}`).then((r) => r.data as Plan),
   updatePlan: (id: number, data: any) => http.put(`/api/plans/${id}`, data).then((r) => r.data as Plan),
   deletePlan: (id: number) => http.delete(`/api/plans/${id}`),
@@ -106,21 +106,23 @@ export const api = {
 
   getPlanStreamUrl: (agentRunId: number) => `/api/plans/generate/${agentRunId}/stream`,
 
-  listAgentRuns: (params?: any) => http.get('/api/agent/runs/', { params }).then((r) => r.data as AgentRun[]),
+  listAgentRuns: (params?: any) => http.get('/api/agent/runs', { params }).then((r) => r.data as AgentRun[]),
   getAgentRunDetail: (id: number) => http.get(`/api/agent/runs/${id}`).then((r) => r.data),
   retryAgentRun: (id: number) => http.post(`/api/agent/runs/${id}/retry`).then((r) => r.data),
 
-  listDatasources: () => http.get('/api/datasources/').then((r) => r.data),
-  createDatasource: (data: any) => http.post('/api/datasources/', data).then((r) => r.data),
+  listDatasources: () => http.get('/api/datasources').then((r) => r.data),
+  createDatasource: (data: any) => http.post('/api/datasources', data).then((r) => r.data),
   getDatasource: (id: number) => http.get(`/api/datasources/${id}`).then((r) => r.data),
   updateDatasource: (id: number, data: any) => http.put(`/api/datasources/${id}`, data).then((r) => r.data),
   deleteDatasource: (id: number) => http.delete(`/api/datasources/${id}`),
 
-  listUsers: () => http.get('/api/users/').then((r) => r.data as User[]),
-  createUser: (data: any) => http.post('/api/users/', data).then((r) => r.data as User),
+  listUsers: () => http.get('/api/users').then((r) => r.data as User[]),
+  createUser: (data: any) => http.post('/api/users', data).then((r) => r.data as User),
   getUser: (id: number) => http.get(`/api/users/${id}`).then((r) => r.data as User),
   updateUser: (id: number, data: any) => http.put(`/api/users/${id}`, data).then((r) => r.data as User),
   deleteUser: (id: number) => http.delete(`/api/users/${id}`),
 
-  listAuditLogs: (params?: any) => http.get('/api/audit/', { params }).then((r) => r.data as AuditLog[]),
+  listAuditLogs: (params?: any) => http.get('/api/audit', { params }).then((r) => r.data as AuditLog[]),
+
+  getCollectorStatus: () => http.get('/api/collector/status').then((r) => r.data),
 }

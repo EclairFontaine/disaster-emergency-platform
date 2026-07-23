@@ -93,6 +93,15 @@ async def run_plan_generation(db: AsyncSession, incident_id: int) -> AgentRun:
         await db.flush()
 
         output_data = {"plan_id": plan.id, "plan_content": plan_content, "source_refs": source_refs}
+
+        # 自动匹配资源并创建调度单
+        try:
+            from app.services.resource_auto_dispatcher import auto_match_and_dispatch
+            dispatches = await auto_match_and_dispatch(db, incident, plan.id)
+            output_data["auto_dispatches"] = dispatches
+        except Exception:
+            output_data["auto_dispatches"] = []
+
         await finish_agent_run(db, run, output_data)
 
     except Exception as e:

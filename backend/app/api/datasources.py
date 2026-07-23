@@ -12,7 +12,7 @@ from app.services.audit import log_action
 router = APIRouter(prefix="/api/datasources", tags=["数据源管理"])
 
 
-@router.get("/", response_model=List[DataSourceResponse])
+@router.get("", response_model=List[DataSourceResponse])
 async def list_datasources(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(require_admin),
@@ -21,7 +21,7 @@ async def list_datasources(
     return [DataSourceResponse.model_validate(d) for d in result.scalars().all()]
 
 
-@router.post("/", response_model=DataSourceResponse, status_code=201)
+@router.post("", response_model=DataSourceResponse, status_code=201)
 async def create_datasource(
     data: DataSourceCreate,
     db: AsyncSession = Depends(get_db),

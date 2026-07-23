@@ -13,7 +13,7 @@ from app.services.audit import log_action
 router = APIRouter(prefix="/api/users", tags=["用户管理"])
 
 
-@router.get("/", response_model=List[UserResponse])
+@router.get("", response_model=List[UserResponse])
 async def list_users(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(require_admin),
@@ -32,7 +32,7 @@ async def list_users(
     return response
 
 
-@router.post("/", response_model=UserResponse, status_code=201)
+@router.post("", response_model=UserResponse, status_code=201)
 async def create_user(
     data: UserCreate,
     db: AsyncSession = Depends(get_db),

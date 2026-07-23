@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     MILVUS_PORT: int = 19530
     DEEPSEEK_API_KEY: str = "sk-placeholder"
     DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
+    OPENWEATHER_API_KEY: str = ""
+    QWEATHER_API_KEY: str = ""
     JWT_SECRET: str = "yunnan-disaster-jwt-secret-2024"
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 1440
@@ -28,22 +30,23 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-# Force reload from .env if DEEPSEEK_API_KEY is default (workaround for Chinese path)
-if settings.DEEPSEEK_API_KEY == "sk-placeholder":
-    # config.py -> core/ -> app/ -> backend/
-    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".env")
-    if os.path.exists(env_path):
-        with open(env_path, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith("#") and "=" in line:
-                    k, v = line.split("=", 1)
-                    if k.strip() == "DEEPSEEK_API_KEY":
-                        settings.DEEPSEEK_API_KEY = v.strip()
-                        # Also update the deepseek client that was already created
-                        try:
-                            from app.services.deepseek import deepseek_client
-                            deepseek_client._refresh_config()
-                        except Exception:
-                            pass
-                        break
+# Force reload from .env (workaround for Chinese path)
+env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".env")
+if os.path.exists(env_path):
+    with open(env_path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                k, v = k.strip(), v.strip()
+                if k == "DEEPSEEK_API_KEY" and settings.DEEPSEEK_API_KEY == "sk-placeholder":
+                    settings.DEEPSEEK_API_KEY = v
+                    try:
+                        from app.services.deepseek import deepseek_client
+                        deepseek_client._refresh_config()
+                    except Exception:
+                        pass
+                elif k == "OPENWEATHER_API_KEY" and not settings.OPENWEATHER_API_KEY:
+                    settings.OPENWEATHER_API_KEY = v
+                elif k == "QWEATHER_API_KEY" and not settings.QWEATHER_API_KEY:
+                    settings.QWEATHER_API_KEY = v

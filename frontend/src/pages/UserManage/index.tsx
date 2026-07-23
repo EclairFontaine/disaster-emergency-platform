@@ -71,7 +71,17 @@ export default function UserManage() {
           <Form.Item name="real_name" label="姓名"><Input /></Form.Item>
           <Form.Item name="phone" label="电话"><Input /></Form.Item>
           <Form.Item name="role_id" label="角色" rules={[{ required: true }]}>
-            <Select options={Object.entries(roleLabels).map(([k, v], i) => ({ value: i + 1, label: v }))} />
+            <Select options={(() => {
+              const seen = new Set()
+              const opts: {value:number,label:string}[] = []
+              users.forEach(u => {
+                if (u.role && !seen.has(u.role.name)) {
+                  seen.add(u.role.name)
+                  opts.push({ value: u.role_id, label: roleLabels[u.role.name] || u.role.name })
+                }
+              })
+              return opts
+            })()} />
           </Form.Item>
           <Form.Item name="is_active" label="启用" valuePropName="checked" initialValue={true}><Switch /></Form.Item>
         </Form>

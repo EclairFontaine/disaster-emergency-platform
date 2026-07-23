@@ -108,7 +108,7 @@ async def seed_data():
         pass
 
 
-app = FastAPI(title=settings.APP_NAME, version="1.0.0", lifespan=lifespan)
+app = FastAPI(title=settings.APP_NAME, version="1.0.0", lifespan=lifespan, redirect_slashes=False)
 
 app.add_middleware(
     CORSMiddleware,

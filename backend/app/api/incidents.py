@@ -28,7 +28,7 @@ def haversine(lat1, lng1, lat2, lng2):
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
-@router.post("/", response_model=IncidentResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=IncidentResponse, status_code=status.HTTP_201_CREATED)
 async def create_incident(
     data: IncidentCreate,
     db: AsyncSession = Depends(get_db),
@@ -53,7 +53,7 @@ async def create_incident(
     return IncidentResponse.model_validate(incident)
 
 
-@router.get("/", response_model=List[IncidentResponse])
+@router.get("", response_model=List[IncidentResponse])
 async def list_incidents(
     status: Optional[str] = Query(None),
     category: Optional[str] = Query(None),
