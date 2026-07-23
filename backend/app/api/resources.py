@@ -4,7 +4,7 @@ from sqlalchemy import select, and_
 from typing import Optional, List
 
 from app.core.database import get_db
-from app.core.security import get_current_user, require_commander
+from app.core.security import get_current_user, require_commander, require_resource_ops
 from app.models.all import Resource, DispatchOrder, User, ResourceLock
 from app.schemas.all import (
     ResourceCreate, ResourceResponse, ResourceUpdate, ResourceLockRequest,
@@ -96,7 +96,7 @@ async def lock_resource_endpoint(
     resource_id: int,
     data: ResourceLockRequest,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_commander),
+    user: User = Depends(require_resource_ops),
 ):
     success = await lock_resource(db, resource_id, data.incident_id, data.quantity, user.id)
     if not success:
@@ -113,7 +113,7 @@ async def lock_resource_endpoint(
 async def release_resource_endpoint(
     resource_id: int,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_commander),
+    user: User = Depends(require_resource_ops),
 ):
     result = await db.execute(
         select(ResourceLock).where(
@@ -157,7 +157,7 @@ async def list_dispatch_orders(
 async def create_dispatch_order(
     data: DispatchOrderCreate,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_commander),
+    user: User = Depends(require_resource_ops),
 ):
     order = DispatchOrder(**data.model_dump())
     db.add(order)
@@ -186,7 +186,7 @@ async def update_dispatch_status(
     order_id: int,
     data: DispatchOrderStatusUpdate,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_commander),
+    user: User = Depends(require_resource_ops),
 ):
     result = await db.execute(select(DispatchOrder).where(DispatchOrder.id == order_id))
     order = result.scalar_one_or_none()
