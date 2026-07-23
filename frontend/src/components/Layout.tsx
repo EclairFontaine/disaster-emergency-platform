@@ -75,19 +75,14 @@ export default function AppLayout() {
 
   return (
     <Layout>
-      <Sider width={220} theme="dark" style={{ minHeight: '100vh' }}>
-        <div className="ant-logo">
-          <Space direction="vertical" size={0} align="center">
-            <Typography.Text strong style={{ color: '#fff', fontSize: 17, letterSpacing: 1 }}>
-              应急协同决策平台
-            </Typography.Text>
-            <Typography.Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12 }}>
-              Yunnan Disaster Response
-            </Typography.Text>
-          </Space>
+      <Sider width={220} theme="light" style={{ minHeight: '100vh' }}>
+        <div style={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid #e9ecef' }}>
+          <span style={{ fontSize: 16, fontWeight: 700, color: '#212529', letterSpacing: 0.5 }}>
+            应急协同决策平台
+          </span>
         </div>
         <Menu
-          theme="dark"
+          theme="light"
           mode="inline"
           selectedKeys={[selectedKey]}
           items={menus.map((m) => ({
