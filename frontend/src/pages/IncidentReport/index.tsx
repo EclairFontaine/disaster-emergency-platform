@@ -27,8 +27,11 @@ export default function IncidentReport() {
 
   const handleUpload = async (file: File) => {
     try {
-      const res = await api.uploadImage(0, file)
-      setImages((prev) => [...prev, res.url])
+      const reader = new FileReader()
+      reader.onload = () => {
+        setImages((prev) => [...prev, reader.result as string])
+      }
+      reader.readAsDataURL(file)
       message.success('上传成功')
     } catch {
       message.error('上传失败')

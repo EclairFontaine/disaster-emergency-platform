@@ -67,19 +67,8 @@ class DeepSeekClient:
             return response.json()
 
     async def get_embedding(self, text: str) -> list[float]:
-        client = await self._get_client()
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json",
-        }
-        body = {
-            "model": "text-embedding-ada-002",
-            "input": text,
-        }
-        response = await client.post(f"{self.base_url}/embeddings", headers=headers, json=body)
-        response.raise_for_status()
-        data = response.json()
-        return data["data"][0]["embedding"]
+        """获取文本向量 (DeepSeek暂不支持embedding，返回空)"""
+        return []
 
     async def close(self):
         if self._client:

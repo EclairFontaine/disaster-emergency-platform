@@ -119,6 +119,6 @@ async def auto_match_and_dispatch(
             pass
 
     if dispatch_results:
-        await db.commit()
+        await db.flush()
 
     return dispatch_results

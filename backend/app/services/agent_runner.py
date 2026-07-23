@@ -91,7 +91,6 @@ async def run_plan_generation(db: AsyncSession, incident_id: int) -> AgentRun:
         )
         db.add(plan)
         await db.flush()
-        await db.commit()
 
         output_data = {"plan_id": plan.id, "plan_content": plan_content, "source_refs": source_refs}
 
