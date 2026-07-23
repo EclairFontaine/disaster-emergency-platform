@@ -1,13 +1,79 @@
 import { useEffect, useState } from 'react'
-import { Row, Col, Card, Statistic, Table, Tag, Spin, Alert, Progress, Descriptions, Badge } from 'antd'
-import { AlertOutlined, CheckCircleOutlined, DatabaseOutlined, CarOutlined, CloudOutlined } from '@ant-design/icons'
+import { Row, Col, Card, Statistic, Table, Tag, Spin, Alert, Progress, Descriptions, Badge, Steps, List, Space } from 'antd'
+import { AlertOutlined, CheckCircleOutlined, DatabaseOutlined, CarOutlined, CloudOutlined, UserOutlined } from '@ant-design/icons'
 import MapView from '../../components/MapView'
 import { api } from '../../services/api'
+import { useAppStore } from '../../store'
 
 const severityColors: Record<string, string> = { P1: 'red', P2: 'orange', P3: 'blue', P4: 'green' }
 const statusColors: Record<string, string> = { pending_review: 'gold', confirmed: 'blue', in_progress: 'orange', closed: 'green' }
 const statusLabels: Record<string, string> = { pending_review: '待核验', confirmed: '已确认', in_progress: '处置中', closed: '已结束' }
 const categoryLabels: Record<string, string> = { earthquake: '地震', flood: '洪水', landslide: '山体滑坡', fire: '火灾', other: '其他' }
+
+const roleSteps: Record<string, { title: string; items: string[]; color: string }> = {
+  admin: {
+    title: '系统管理员面板',
+    items: ['管理用户账号与权限', '维护知识库和应急预案', '审核数据源和Agent执行记录', '查看全局审计日志'],
+    color: '#722ed1',
+  },
+  info_reporter: {
+    title: '信息员工作台 — 我的任务',
+    items: ['点击「灾情上报」提交灾情信息', '在地图上标注准确位置', '上传现场图片作为佐证', '跟踪上报灾情的审核状态'],
+    color: '#1890ff',
+  },
+  emergency_commander: {
+    title: '应急指挥工作台 — 待办事项',
+    items: ['在「信息审核」中核验灾情真实性', '对确认的灾情使用AI生成处置方案', '审批方案并自动调度救援资源', '在「资源调度」中跟踪物资到位情况'],
+    color: '#f5222d',
+  },
+  resource_manager: {
+    title: '资源管理工作台 — 今日概览',
+    items: ['查看资源分布和可用状态', '响应调度指令，锁定所需资源', '在「调度管理」中跟踪运输和到达', '及时更新资源数量和使用状态'],
+    color: '#fa8c16',
+  },
+}
+
+function RoleTaskGuide({ stats }: { stats: any }) {
+  const user = useAppStore((s) => s.user)
+  const roleName = user?.role?.name || 'info_reporter'
+  const config = roleSteps[roleName] || roleSteps.info_reporter
+
+  return (
+    <Row gutter={[16, 16]} style={{ marginTop: 4 }}>
+      <Col span={24}>
+        <Card
+          size="small"
+          title={
+            <span style={{ color: config.color }}>
+              <UserOutlined style={{ marginRight: 8 }} />
+              {config.title} — 当前角色: {user?.real_name || user?.username}
+            </span>
+          }
+          extra={
+            <Space>
+              {roleName === 'info_reporter' && <Tag color="blue">今天已有 {stats.total_incidents} 条灾情</Tag>}
+              {roleName === 'emergency_commander' && <Tag color="red">待审核: {stats.active_incidents} 条活跃灾情</Tag>}
+              {roleName === 'resource_manager' && <Tag color="orange">可调度资源: {stats.total_resources} 项</Tag>}
+            </Space>
+          }
+        >
+          <List
+            size="small"
+            dataSource={config.items}
+            renderItem={(item: string, index: number) => (
+              <List.Item>
+                <Space>
+                  <Tag color={config.color}>{index + 1}</Tag>
+                  <span>{item}</span>
+                </Space>
+              </List.Item>
+            )}
+          />
+        </Card>
+      </Col>
+    </Row>
+  )
+}
 
 export default function Dashboard() {
   const [stats, setStats] = useState<any>(null)
@@ -104,6 +170,8 @@ export default function Dashboard() {
           </Card>
         </Col>
       </Row>
+
+      <RoleTaskGuide stats={stats} />
 
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
         <Col xs={24} md={12}>

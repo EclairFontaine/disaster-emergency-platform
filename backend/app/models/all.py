@@ -162,3 +162,19 @@ class ResourceLock(Base):
     locked_by = Column(Integer, ForeignKey("users.id"))
     locked_at = Column(DateTime(timezone=True), server_default=func.now())
     released_at = Column(DateTime(timezone=True))
+
+
+class CollectedEvent(Base):
+    """采集事件持久化"""
+    __tablename__ = "collected_events"
+    id = Column(Integer, primary_key=True, index=True)
+    source = Column(String(64), nullable=False, index=True)       # USGS/QWeather/NMC/Warning
+    event_type = Column(String(32), nullable=False)                # earthquake/weather/warning
+    external_id = Column(String(256))                               # 外部事件ID
+    title = Column(String(512))
+    data = Column(JSON, default=dict)                               # 完整数据
+    latitude = Column(Float)
+    longitude = Column(Float)
+    magnitude = Column(Float)                                       # 震级 or 严重度
+    created_incident_id = Column(Integer, ForeignKey("incidents.id"), nullable=True)
+    collected_at = Column(DateTime(timezone=True), server_default=func.now())

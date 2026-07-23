@@ -14,15 +14,44 @@ from sqlalchemy import select
 async def scheduled_ingestion():
     while True:
         try:
+            from app.services.collector import collect_earthquake, collect_weather, collect_warnings
+            # 并行采集所有数据源
+            results = await asyncio.gather(
+                collect_earthquake(),
+                collect_weather(),
+                collect_warnings(),
+                return_exceptions=True,
+            )
+            eq_data, wx_data, wn_data = results
+            eq_count = len(eq_data) if isinstance(eq_data, list) else 0
+            wx_count = len(wx_data) if isinstance(wx_data, list) else 0
+            wn_count = len(wn_data) if isinstance(wn_data, list) else 0
+            print(f"[Scheduler] 采集完成: 地震{eq_count} | 气象{wx_count} | 预警{wn_count}")
+
+            # 地震数据自动入库
             async with AsyncSessionLocal() as db:
                 from app.services.ingestion import run_ingestion
                 result = await run_ingestion(db)
-                if result.get("earthquake"):
-                    print(f"[Scheduler] 采集完成, 新灾情: {result['earthquake']}")
+                if result.get("earthquake") and result["earthquake"]:
+                    print(f"[Scheduler] 新灾情入库: {result['earthquake']}")
         except Exception as e:
             print(f"[Scheduler] 采集异常: {e}")
-        await asyncio.sleep(1800)  # 30 minutes
+        await asyncio.sleep(300)  # 5 minutes for demo
 
+
+
+async def _initial_ingestion():
+    """启动时异步采集，不阻塞服务"""
+    await asyncio.sleep(5)  # wait for startup
+    try:
+        async with AsyncSessionLocal() as db:
+            from app.services.ingestion import run_ingestion
+            result = await run_ingestion(db)
+            eq_count = len(result.get("earthquake", []))
+            wx_count = len(result.get("weather", []))
+            print(f"[Startup] 初始采集完成: 地震{eq_count}条 气象{wx_count}条")
+    except Exception as e:
+        print(f"[Startup] 初始采集异常: {e}")
 
 
 @asynccontextmanager
@@ -38,15 +67,8 @@ async def lifespan(app: FastAPI):
     # Start background scheduler for data collection
     scheduler_task = asyncio.create_task(scheduled_ingestion())
 
-    # Run initial ingestion to get real-time earthquake data
-    try:
-        async with AsyncSessionLocal() as db:
-            from app.services.ingestion import run_ingestion
-            result = await run_ingestion(db)
-            if result.get("earthquake"):
-                print(f"[Startup] 初始化实时地震数据: {result['earthquake']}")
-    except Exception:
-        pass
+    # Start initial ingestion as background task (don't block startup)
+    asyncio.create_task(_initial_ingestion())
 
     yield
 

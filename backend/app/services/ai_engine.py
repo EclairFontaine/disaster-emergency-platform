@@ -1,18 +1,58 @@
-"""AI 方案生成引擎 - DeepSeek优先，模板兜底"""
+"""AI 方案生成引擎 - DeepSeek优先 + 本地RAG(采集事件+预案) + 模板兜底"""
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, or_
+import math
 
-from app.models.all import Incident, EmergencyPlan, AgentRun, Citation
+from app.models.all import Incident, EmergencyPlan, AgentRun, Citation, CollectedEvent
 from app.services.rag import search_plans
 from datetime import datetime, timezone
 
 
+def haversine(lat1, lng1, lat2, lng2):
+    if not all([lat1, lng1, lat2, lng2]): return float("inf")
+    R = 6371000
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlam = math.radians(lng2 - lng1)
+    a = math.sin(dphi/2)**2 + math.cos(phi1)*math.cos(phi2)*math.sin(dlam/2)**2
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+
+
+async def search_historical_events(db: AsyncSession, incident: Incident, limit: int = 10) -> list[dict]:
+    """本地RAG：搜索历史采集事件"""
+    results = await db.execute(
+        select(CollectedEvent).order_by(CollectedEvent.collected_at.desc()).limit(200)
+    )
+    events = results.scalars().all()
+
+    # 全部算距离，取最近的
+    scored = []
+    for e in events:
+        dist = haversine(incident.latitude, incident.longitude, e.latitude, e.longitude)
+        if dist < 99999999:  # always include
+            scored.append((dist, e))
+    scored.sort(key=lambda x: x[0])
+
+    return [
+        {
+            "title": e.title,
+            "magnitude": e.magnitude,
+            "latitude": e.latitude,
+            "longitude": e.longitude,
+            "distance_km": round(dist / 1000, 1),
+            "time": e.collected_at.isoformat() if e.collected_at else "",
+        }
+        for dist, e in scored[:limit]
+    ]
+
+
 async def generate_plan_with_ai(db: AsyncSession, incident: Incident, agent_run: AgentRun) -> str:
-    """优先尝试 DeepSeek，失败则用模板生成"""
+    """DeepSeek优先 + 本地RAG(预案+历史事件) + 模板兜底"""
     try:
         from app.services.deepseek import deepseek_client, SYSTEM_PROMPTS
 
+        # 1. 检索预案 (keyword match)
         plans = await search_plans(db, f"{incident.title or ''} {incident.description or ''} {incident.category or ''}")
         plan_texts = []
         citations_data = []
@@ -21,10 +61,30 @@ async def generate_plan_with_ai(db: AsyncSession, incident: Incident, agent_run:
             plan_texts.append(f"参考预案{i+1}：{snippet}")
             citations_data.append({"plan_id": p.id, "doc_name": p.title, "chunk_text": snippet, "score": 1.0 - i * 0.1})
 
+        # 2. 检索历史采集事件 (local RAG)
+        hist_events = await search_historical_events(db, incident, limit=5)
+        hist_text = ""
+        if hist_events:
+            hist_lines = ["近期周边真实灾害事件："]
+            for i, he in enumerate(hist_events[:5]):
+                hist_lines.append(
+                    f"  {i+1}. {he['title']} | 距离: {he['distance_km']}km | "
+                    f"坐标: ({he['latitude']}, {he['longitude']}) | 时间: {he['time'][:10]}"
+                )
+                citations_data.append({
+                    "doc_name": f"历史事件: {he['title']}",
+                    "chunk_text": f"距离{he['distance_km']}km, {he['time'][:10]}",
+                    "score": 1.0 - i * 0.15,
+                })
+            hist_text = "\n".join(hist_lines)
+            agent_run.input_data = {**agent_run.input_data, "historical_events": len(hist_events)}
+
         ref_text = "\n\n".join(plan_texts) if plan_texts else "暂无匹配参考预案"
+        rag_context = f"{ref_text}\n\n{hist_text}" if hist_text else ref_text
+
         messages = [
             {"role": "system", "content": SYSTEM_PROMPTS["generate_plan"]},
-            {"role": "user", "content": f"灾情信息：\n标题：{incident.title}\n类型：{incident.category or '未知'}\n严重程度：{incident.severity}\n描述：{incident.description or ''}\n影响人数：{incident.affected_count or '未知'}\n位置：({incident.latitude}, {incident.longitude})\n\n参考预案：\n{ref_text}"},
+            {"role": "user", "content": f"灾情信息：\n标题：{incident.title}\n类型：{incident.category or '未知'}\n严重程度：{incident.severity}\n描述：{incident.description or ''}\n影响人数：{incident.affected_count or '未知'}\n位置：({incident.latitude}, {incident.longitude})\n\n参考预案+历史数据：\n{rag_context}"},
         ]
         response = await deepseek_client.chat_completion(messages, max_tokens=4096)
         plan_content = response["choices"][0]["message"]["content"]
@@ -47,9 +107,10 @@ async def generate_plan_with_ai(db: AsyncSession, incident: Incident, agent_run:
 
 
 async def generate_plan_with_template(db: AsyncSession, incident: Incident, agent_run: AgentRun) -> tuple:
-    """本地模板引擎 - 基于匹配预案组装方案，无需AI"""
+    """本地模板引擎 - 基于匹配预案+历史事件组装方案"""
 
     plans = await search_plans(db, f"{incident.title or ''} {incident.description or ''} {incident.category or ''}")
+    hist_events = await search_historical_events(db, incident, limit=5)
 
     cat_labels = {"earthquake":"地震灾害","flood":"洪涝灾害","landslide":"地质灾害","fire":"森林火灾","other":"自然灾害"}
     sev_labels = {"P1":"特别重大(I级)","P2":"重大(II级)","P3":"较大(III级)","P4":"一般(IV级)"}
@@ -133,6 +194,24 @@ async def generate_plan_with_template(db: AsyncSession, incident: Incident, agen
                 agent_run_id=agent_run.id,
                 doc_name=p.title,
                 chunk_text=snippet,
+                relevance_score=1.0 - i * 0.1,
+            ))
+
+    # 添加历史事件数据 (本地RAG)
+    if hist_events:
+        plan_parts.append("")
+        plan_parts.append("## 六、周边近期真实地震事件（数据源：USGS）")
+        for i, he in enumerate(hist_events[:5]):
+            plan_parts.append(f"- {he['title']} | 距离约{he['distance_km']}km | {he['time'][:10]}")
+            citations_data.append({
+                "doc_name": f"USGS: {he['title']}",
+                "chunk_text": f"距离{he['distance_km']}km, {he['time'][:10]}",
+                "score": 1.0 - i * 0.1,
+            })
+            db.add(Citation(
+                agent_run_id=agent_run.id,
+                doc_name=f"USGS: {he['title']}",
+                chunk_text=f"距离{he['distance_km']}km, {he['time'][:10]}",
                 relevance_score=1.0 - i * 0.1,
             ))
 
