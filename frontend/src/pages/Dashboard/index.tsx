@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Row, Col, Card, Statistic, Table, Tag, Spin, Alert, Progress, Descriptions, Badge, Steps, List, Space } from 'antd'
+import { Row, Col, Card, Statistic, Table, Tag, Spin, Alert, Progress, Descriptions, Badge, Steps, List, Space, Button } from 'antd'
 import { AlertOutlined, CheckCircleOutlined, DatabaseOutlined, CarOutlined, CloudOutlined, UserOutlined } from '@ant-design/icons'
 import MapView from '../../components/MapView'
 import { api } from '../../services/api'
@@ -80,16 +80,22 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [rtStatus, setRtStatus] = useState<any>(null)
+  const [collectedEvents, setCollectedEvents] = useState<any[]>([])
 
   useEffect(() => {
     Promise.all([
       api.getStatistics().then(setStats),
       fetchRealTimeStatus(),
+      fetchLatestEvents(),
     ]).finally(() => setLoading(false))
   }, [])
 
   const fetchRealTimeStatus = () => {
     api.getCollectorStatus().then(setRtStatus).catch(() => {})
+  }
+
+  const fetchLatestEvents = () => {
+    return api.getLatestEvents({ limit: 10 }).then(setCollectedEvents).catch(() => {})
   }
 
   if (loading) return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />
@@ -172,6 +178,42 @@ export default function Dashboard() {
       </Row>
 
       <RoleTaskGuide stats={stats} />
+
+      {/* 实时采集事件 */}
+      {collectedEvents.length > 0 && (
+        <Row gutter={[16, 16]} style={{ marginTop: 4 }}>
+          <Col span={24}>
+            <Card
+              size="small"
+              title={<span><CloudOutlined style={{ marginRight: 8 }} />实时采集数据（DB持久化）</span>}
+              extra={
+                <Space>
+                  <Badge status="processing" text={`每5分钟自动采集 | 已采集 ${collectedEvents.length} 条`} />
+                  <Button size="small" onClick={() => fetchLatestEvents()}>刷新</Button>
+                </Space>
+              }
+            >
+              <Table
+                dataSource={collectedEvents.slice(0, 8)}
+                rowKey="id"
+                size="small"
+                pagination={false}
+                columns={[
+                  { title: '来源', dataIndex: 'source', key: 'source', width: 70,
+                    render: (v: string) => <Tag color={v === 'USGS' ? 'red' : v === 'QWeather' ? 'blue' : 'orange'}>{v}</Tag> },
+                  { title: '事件', dataIndex: 'title', key: 'title', ellipsis: true },
+                  { title: '震级/温度', dataIndex: 'magnitude', key: 'magnitude', width: 90,
+                    render: (v: number, r: any) => r.event_type === 'earthquake' ? `M${v}` : `${v}C` },
+                  { title: '时间', dataIndex: 'collected_at', key: 'time', width: 160,
+                    render: (t: string) => t ? new Date(t).toLocaleString('zh-CN') : '-' },
+                  { title: '关联灾情', dataIndex: 'created_incident_id', key: 'incident', width: 80,
+                    render: (v: number) => v ? <Tag color="green">#{v}</Tag> : <Tag>未入库</Tag> },
+                ]}
+              />
+            </Card>
+          </Col>
+        </Row>
+      )}
 
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
         <Col xs={24} md={12}>

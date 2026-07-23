@@ -125,4 +125,5 @@ export const api = {
   listAuditLogs: (params?: any) => http.get('/api/audit', { params }).then((r) => r.data as AuditLog[]),
 
   getCollectorStatus: () => http.get('/api/collector/status').then((r) => r.data),
+  getLatestEvents: (params?: any) => http.get('/api/collector/events', { params }).then((r) => r.data),
 }
