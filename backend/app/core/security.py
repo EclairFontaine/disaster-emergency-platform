@@ -67,3 +67,5 @@ require_admin = require_role("admin")
 require_commander = require_role("admin", "emergency_commander")
 require_reporter = require_role("admin", "info_reporter")
 require_resource_manager = require_role("admin", "resource_manager")
+# 资源操作权限：管理员+指挥员+资源管理员都能调度
+require_resource_ops = require_role("admin", "emergency_commander", "resource_manager")
