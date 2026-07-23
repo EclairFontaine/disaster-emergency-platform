@@ -1,6 +1,7 @@
 import json
+from jose import JWTError, jwt
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
-from app.core.security import decode_token
+from app.core.config import settings
 
 router = APIRouter(prefix="/api/ws", tags=["WebSocket"])
 
@@ -24,9 +25,9 @@ async def broadcast_event(event_type: str, data: dict, target_user_ids: list[int
 @router.websocket("/")
 async def websocket_endpoint(websocket: WebSocket, token: str = Query(...)):
     try:
-        payload = decode_token(token)
+        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
         user_id = int(payload.get("sub", 0))
-    except Exception:
+    except (JWTError, ValueError):
         await websocket.close(code=4001)
         return
 
