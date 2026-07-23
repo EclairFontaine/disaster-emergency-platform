@@ -75,6 +75,14 @@ docker compose up -d
 
 ## 本地开发（不使用 Docker）
 
+### 方式一：Windows 一键启动（推荐）
+
+双击项目根目录的 `START.bat`，自动启动所有服务并打开浏览器。
+
+> 注意：START.bat 中的路径可能需要根据你的本地环境调整。
+
+### 方式二：手动启动
+
 ### 后端
 
 ```bash
@@ -180,7 +188,7 @@ pending_review ──→ confirmed ──→ in_progress ──→ closed
 | 能力 | 技术方案 | 说明 |
 |------|---------|------|
 | 信息抽取 | DeepSeek + Prompt | 从灾情描述中提取结构化信息 |
-| 知识检索 | RAG (Milvus + ILIKE) | 从预案知识库检索匹配参考方案 |
+| 知识检索 | 本地RAG + Milvus双模式 | 从预案知识库检索匹配参考方案，支持本地向量降级 |
 | 方案生成 | DeepSeek Chat | 生成六部分完整应急预案 |
 | 进度推送 | SSE | 实时推送生成各阶段进度 |
 | 降级策略 | 本地模板引擎 | AI不可用时自动切换，保证可用性 |
@@ -231,6 +239,7 @@ disaster-emergency-platform/
 │   └── 系统设计说明书.docx
 ├── deploy/                       # 部署配置
 ├── docker-compose.yml
+├── START.bat                      # Windows 一键启动脚本
 ├── .env.example
 └── README.md
 ```
