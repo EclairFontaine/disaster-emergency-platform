@@ -32,8 +32,11 @@ async def scheduled_ingestion():
             async with AsyncSessionLocal() as db:
                 from app.services.ingestion import run_ingestion
                 result = await run_ingestion(db)
+                await db.commit()
                 if result.get("earthquake") and result["earthquake"]:
                     print(f"[Scheduler] 新灾情入库: {result['earthquake']}")
+                if result.get("weather") and result["weather"]:
+                    print(f"[Scheduler] 气象入库: {result['weather']}")
         except Exception as e:
             print(f"[Scheduler] 采集异常: {e}")
         await asyncio.sleep(300)  # 5 minutes for demo
@@ -47,6 +50,7 @@ async def _initial_ingestion():
         async with AsyncSessionLocal() as db:
             from app.services.ingestion import run_ingestion
             result = await run_ingestion(db)
+            await db.commit()
             eq_count = len(result.get("earthquake", []))
             wx_count = len(result.get("weather", []))
             print(f"[Startup] 初始采集完成: 地震{eq_count}条 气象{wx_count}条")
