@@ -38,8 +38,37 @@ def event_loop():
 
 @pytest_asyncio.fixture
 async def test_app():
-    """创建FastAPI测试应用"""
-    from app.main import app
+    """创建FastAPI测试应用（跳过lifespan，避免后台任务干扰测试）"""
+    from fastapi import FastAPI
+    from fastapi.middleware.cors import CORSMiddleware
+    from app.core.config import settings
+
+    app = FastAPI(title=settings.APP_NAME, version="1.0.0", redirect_slashes=False)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origins_list,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    from app.api import auth, incidents, resources, plans, agent, datasources, users, websocket, audit, statistics, collector
+    app.include_router(auth.router)
+    app.include_router(incidents.router)
+    app.include_router(resources.router)
+    app.include_router(plans.router)
+    app.include_router(agent.router)
+    app.include_router(datasources.router)
+    app.include_router(users.router)
+    app.include_router(websocket.router)
+    app.include_router(audit.router)
+    app.include_router(statistics.router)
+    app.include_router(collector.router)
+
+    @app.get("/api/health")
+    async def health_check():
+        return {"status": "ok", "name": settings.APP_NAME}
+
     return app
 
 
@@ -65,16 +94,16 @@ def auth_headers(admin_token):
 
 def pytest_configure(config):
     config.addinivalue_line("markers", "unit: 单元测试（不依赖外部服务，可独立运行）")
-    config.addinivalue_line("markers", "integration: 集成测试（需要PostgreSQL数据库）")
+    config.addinivalue_line("markers", "integration: 集成测试（需要PostgreSQL + 运行中的后端服务）")
     config.addinivalue_line("markers", "api: API端点测试（需要完整后端运行环境）")
     config.addinivalue_line("markers", "ai: AI相关测试（需要DeepSeek API Key）")
     config.addinivalue_line("markers", "slow: 耗时测试")
 
 
 def pytest_collection_modifyitems(config, items):
-    """自动跳过integration标记的测试（当PostgreSQL不可用时）"""
+    """当PostgreSQL不可用时自动跳过集成测试"""
     if not PG_AVAILABLE:
-        skip_msg = "PostgreSQL不可用，跳过集成测试。启动PostgreSQL后运行: pytest -m integration"
+        skip_msg = "PostgreSQL不可用，跳过集成测试。"
         for item in items:
             if "integration" in item.keywords:
                 item.add_marker(pytest.mark.skip(reason=skip_msg))

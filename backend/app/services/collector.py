@@ -54,6 +54,12 @@ async def collect_warnings() -> dict:
     return data
 
 
+async def collect_weather_warnings() -> dict:
+    data = await weather_collector.collect_warnings()
+    CACHE["weather_warnings"] = {"data": data, "time": datetime.now(timezone.utc).isoformat()}
+    return data
+
+
 async def collect_gdacs() -> dict:
     data = await gdacs_collector.run()
     CACHE["gdacs"] = {"data": data, "time": datetime.now(timezone.utc).isoformat()}
