@@ -33,6 +33,5 @@ minio_data/
 .DS_Store
 Thumbs.db
 
-# Test files
-test_*.py
+
 
