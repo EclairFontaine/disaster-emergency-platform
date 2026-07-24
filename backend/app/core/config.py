@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     MILVUS_PORT: int = 19530
     DEEPSEEK_API_KEY: str = "sk-placeholder"
     DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
+    DIFY_API_URL: str = "http://localhost:5001/v1"
+    DIFY_API_KEY: str = "app-placeholder"
     OPENWEATHER_API_KEY: str = ""
     QWEATHER_API_KEY: str = ""
     JWT_SECRET: str = "yunnan-disaster-jwt-secret-2024"
@@ -46,6 +48,10 @@ if os.path.exists(env_path):
                         deepseek_client._refresh_config()
                     except Exception:
                         pass
+                elif k == "DIFY_API_KEY" and settings.DIFY_API_KEY == "app-placeholder":
+                    settings.DIFY_API_KEY = v
+                elif k == "DIFY_API_URL":
+                    settings.DIFY_API_URL = v
                 elif k == "OPENWEATHER_API_KEY" and not settings.OPENWEATHER_API_KEY:
                     settings.OPENWEATHER_API_KEY = v
                 elif k == "QWEATHER_API_KEY" and not settings.QWEATHER_API_KEY:

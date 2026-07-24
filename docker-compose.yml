@@ -86,6 +86,8 @@ services:
       MILVUS_PORT: "19530"
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-sk-placeholder}
       DEEPSEEK_BASE_URL: https://api.deepseek.com
+      DIFY_API_URL: ${DIFY_API_URL:-http://localhost:5001/v1}
+      DIFY_API_KEY: ${DIFY_API_KEY:-}
       JWT_SECRET: ${JWT_SECRET:-yunnan-disaster-jwt-secret-2024}
       CORS_ORIGINS: '["http://localhost:3000","http://localhost:80"]'
     depends_on:

@@ -130,9 +130,9 @@ async def stream_generate_plan(db: AsyncSession, incident_id: int, agent_run_id:
 
     yield f"data: {json_mod.dumps({'status': 'extracting', 'message': '正在分析灾情信息...'})}\n\n"
     await asyncio.sleep(0.3)
-    yield f"data: {json_mod.dumps({'status': 'retrieving', 'message': '正在检索相关预案...'})}\n\n"
+    yield f"data: {json_mod.dumps({'status': 'retrieving', 'message': '正在从知识库检索相关预案...'})}\n\n"
     await asyncio.sleep(0.3)
-    yield f"data: {json_mod.dumps({'status': 'generating', 'message': '正在生成应急方案...'})}\n\n"
+    yield f"data: {json_mod.dumps({'status': 'generating', 'message': 'AI正在生成应急方案...'})}\n\n"
 
     try:
         plan_content, source_refs = await generate_plan_with_ai(db, incident, run)

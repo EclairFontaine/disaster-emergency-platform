@@ -29,6 +29,9 @@ milvus_data/
 etcd_data/
 minio_data/
 
+# Scripts output
+scripts/kb_export/
+
 # OS
 .DS_Store
 Thumbs.db

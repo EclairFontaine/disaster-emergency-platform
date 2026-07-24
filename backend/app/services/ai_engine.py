@@ -1,9 +1,10 @@
-"""AI 方案生成引擎 - DeepSeek优先 + 本地RAG(采集事件+预案) + 模板兜底"""
+"""AI 方案生成引擎 - Dify RAG优先 + DeepSeek+本地RAG兜底 + 模板最终兜底"""
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 import math
 
+from app.core.config import settings
 from app.models.all import Incident, EmergencyPlan, AgentRun, Citation, CollectedEvent
 from app.services.rag import search_plans
 from datetime import datetime, timezone
@@ -20,17 +21,15 @@ def haversine(lat1, lng1, lat2, lng2):
 
 
 async def search_historical_events(db: AsyncSession, incident: Incident, limit: int = 10) -> list[dict]:
-    """本地RAG：搜索历史采集事件"""
     results = await db.execute(
         select(CollectedEvent).order_by(CollectedEvent.collected_at.desc()).limit(200)
     )
     events = results.scalars().all()
 
-    # 全部算距离，取最近的
     scored = []
     for e in events:
         dist = haversine(incident.latitude, incident.longitude, e.latitude, e.longitude)
-        if dist < 99999999:  # always include
+        if dist < 99999999:
             scored.append((dist, e))
     scored.sort(key=lambda x: x[0])
 
@@ -47,12 +46,79 @@ async def search_historical_events(db: AsyncSession, incident: Incident, limit: 
     ]
 
 
-async def generate_plan_with_ai(db: AsyncSession, incident: Incident, agent_run: AgentRun) -> str:
-    """DeepSeek优先 + 本地RAG(预案+历史事件) + 模板兜底"""
+async def generate_plan_with_ai(db: AsyncSession, incident: Incident, agent_run: AgentRun):
+    """Dify RAG优先 → DeepSeek+本地RAG兜底 → 模板最终兜底"""
+
+    if settings.DIFY_API_KEY and settings.DIFY_API_KEY != "app-placeholder":
+        result = await _generate_via_dify(db, incident, agent_run)
+        if result:
+            return result
+
+    return await _generate_via_deepseek(db, incident, agent_run)
+
+
+async def _generate_via_dify(db: AsyncSession, incident: Incident, agent_run: AgentRun):
+    """通过 Dify Chat API 进行 RAG 生成"""
+    try:
+        from app.services.dify import dify_client
+
+        query = _build_incident_query(incident)
+
+        inputs = {
+            "incident_title": incident.title or "",
+            "incident_category": incident.category or "unknown",
+            "incident_severity": incident.severity or "",
+            "incident_description": incident.description or "",
+            "incident_latitude": str(incident.latitude or ""),
+            "incident_longitude": str(incident.longitude or ""),
+            "affected_count": str(incident.affected_count or ""),
+        }
+
+        response = await dify_client.chat_blocking(
+            query=query,
+            inputs=inputs,
+            user=str(incident.id),
+        )
+
+        answer = response.get("answer", "")
+
+        metadata = response.get("metadata", {}) or {}
+        retriever_resources = metadata.get("retriever_resources", [])
+
+        citations_data = []
+        for i, resource in enumerate(retriever_resources):
+            doc_name = resource.get("document_name", f"知识库文档{i+1}")
+            chunk_text = resource.get("content", "")[:1000]
+            score = resource.get("score", 1.0 - i * 0.1)
+            citations_data.append({
+                "doc_name": doc_name,
+                "chunk_text": chunk_text[:200],
+                "score": score,
+            })
+            db.add(Citation(
+                agent_run_id=agent_run.id,
+                doc_name=doc_name,
+                chunk_text=chunk_text,
+                relevance_score=score,
+            ))
+
+        agent_run.input_data = {
+            **agent_run.input_data,
+            "provider": "dify",
+            "retrieved_docs": len(citations_data),
+        }
+
+        return answer, citations_data
+
+    except Exception:
+        return None
+
+
+async def _generate_via_deepseek(db: AsyncSession, incident: Incident, agent_run: AgentRun):
+    """DeepSeek直接调用 + 本地关键词检索 (原有逻辑，作为兜底)"""
     try:
         from app.services.deepseek import deepseek_client, SYSTEM_PROMPTS
 
-        # 1. 检索预案 (keyword match)
         plans = await search_plans(db, f"{incident.title or ''} {incident.description or ''} {incident.category or ''}")
         plan_texts = []
         citations_data = []
@@ -61,7 +127,6 @@ async def generate_plan_with_ai(db: AsyncSession, incident: Incident, agent_run:
             plan_texts.append(f"参考预案{i+1}：{snippet}")
             citations_data.append({"plan_id": p.id, "doc_name": p.title, "chunk_text": snippet, "score": 1.0 - i * 0.1})
 
-        # 2. 检索历史采集事件 (local RAG)
         hist_events = await search_historical_events(db, incident, limit=5)
         hist_text = ""
         if hist_events:
@@ -102,11 +167,17 @@ async def generate_plan_with_ai(db: AsyncSession, incident: Incident, agent_run:
     except Exception:
         pass
 
-    # DeepSeek 失败 → 使用模板引擎本地生成
     return await generate_plan_with_template(db, incident, agent_run)
 
 
-async def generate_plan_with_template(db: AsyncSession, incident: Incident, agent_run: AgentRun) -> tuple:
+def _build_incident_query(incident: Incident) -> str:
+    parts = [incident.title or ""]
+    if incident.description:
+        parts.append(incident.description)
+    return " ".join(parts)
+
+
+async def generate_plan_with_template(db: AsyncSession, incident: Incident, agent_run: AgentRun):
     """本地模板引擎 - 基于匹配预案+历史事件组装方案"""
 
     plans = await search_plans(db, f"{incident.title or ''} {incident.description or ''} {incident.category or ''}")
@@ -121,7 +192,7 @@ async def generate_plan_with_template(db: AsyncSession, incident: Incident, agen
         f"# {incident.title} — 应急处置方案",
         "",
         f"**生成时间**: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
-        f"**生成方式**: 本地模板引擎 (DeepSeek未配置时自动降级)",
+        f"**生成方式**: 本地模板引擎 (Dify/DeepSeek未配置时自动降级)",
         f"**灾情类型**: {cat} | **严重程度**: {sev}",
         "",
         "---",
@@ -197,7 +268,6 @@ async def generate_plan_with_template(db: AsyncSession, incident: Incident, agen
                 relevance_score=1.0 - i * 0.1,
             ))
 
-    # 添加历史事件数据 (本地RAG)
     if hist_events:
         plan_parts.append("")
         plan_parts.append("## 六、周边近期真实地震事件（数据源：USGS）")
@@ -217,7 +287,7 @@ async def generate_plan_with_template(db: AsyncSession, incident: Incident, agen
 
     plan_parts.append("")
     plan_parts.append("---")
-    plan_parts.append(f"*本方案由AI应急辅助系统自动生成（{'DeepSeek AI' if False else '本地模板引擎'}），请指挥人员审核后执行。*")
+    plan_parts.append(f"*本方案由AI应急辅助系统生成，请指挥人员审核后执行。*")
 
     plan_content = "\n".join(plan_parts)
     source_refs = [{"doc_name": c["doc_name"], "chunk_text": c["chunk_text"][:200], "score": c["score"]} for c in citations_data]
