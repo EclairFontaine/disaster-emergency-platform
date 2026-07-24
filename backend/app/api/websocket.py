@@ -23,7 +23,11 @@ async def broadcast_event(event_type: str, data: dict, target_user_ids: list[int
 
 
 @router.websocket("/")
-async def websocket_endpoint(websocket: WebSocket, token: str = Query(...)):
+async def websocket_endpoint(websocket: WebSocket, token: str = Query("")):
+    await websocket.accept()
+    if not token:
+        await websocket.close(code=4001)
+        return
     try:
         payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
         user_id = int(payload.get("sub", 0))
@@ -31,7 +35,6 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(...)):
         await websocket.close(code=4001)
         return
 
-    await websocket.accept()
     CONNECTED_CLIENTS[user_id] = websocket
 
     try:
