@@ -14,19 +14,17 @@ from sqlalchemy import select
 async def scheduled_ingestion():
     while True:
         try:
-            from app.services.collector import collect_earthquake, collect_weather, collect_warnings
-            # 并行采集所有数据源
+            from app.services.collector import collect_earthquake, collect_weather, collect_warnings, collect_gdacs
             results = await asyncio.gather(
-                collect_earthquake(),
-                collect_weather(),
-                collect_warnings(),
+                collect_earthquake(), collect_weather(), collect_warnings(), collect_gdacs(),
                 return_exceptions=True,
             )
-            eq_data, wx_data, wn_data = results
+            eq_data, wx_data, wn_data, gd_data = results
             eq_count = len(eq_data) if isinstance(eq_data, list) else 0
             wx_count = len(wx_data) if isinstance(wx_data, list) else 0
             wn_count = len(wn_data) if isinstance(wn_data, list) else 0
-            print(f"[Scheduler] 采集完成: 地震{eq_count} | 气象{wx_count} | 预警{wn_count}")
+            gd_count = len(gd_data) if isinstance(gd_data, list) else 0
+            print(f"[Scheduler] 采集: 地震{eq_count}|气象{wx_count}|预警{wn_count}|GDACS{gd_count}")
 
             # 地震数据自动入库
             async with AsyncSessionLocal() as db:
@@ -134,7 +132,7 @@ async def seed_data():
         pass
 
 
-app = FastAPI(title=settings.APP_NAME, version="1.0.0", lifespan=lifespan, redirect_slashes=False)
+app = FastAPI(title=settings.APP_NAME, version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

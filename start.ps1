@@ -18,14 +18,24 @@ Write-Host "      PostgreSQL ready" -ForegroundColor Green
 # 3. Backend
 Write-Host "[3/4] Starting Backend (port 8000)..." -ForegroundColor Yellow
 Get-Process -Name "python*" -ErrorAction SilentlyContinue | Stop-Process -Force
-Start-Process cmd -ArgumentList "/c","python","-m","uvicorn","app.main:app","--host","127.0.0.1","--port","8000" -WorkingDirectory "$PSScriptRoot\backend"
+$bsi = New-Object System.Diagnostics.ProcessStartInfo
+$bsi.FileName = "python"
+$bsi.Arguments = "-m uvicorn app.main:app --host 127.0.0.1 --port 8000"
+$bsi.WorkingDirectory = "$PSScriptRoot\backend"
+$bsi.UseShellExecute = $true
+[System.Diagnostics.Process]::Start($bsi) | Out-Null
 Start-Sleep 8
 Write-Host "      Backend ready" -ForegroundColor Green
 
 # 4. Frontend
 Write-Host "[4/4] Starting Frontend (port 3000)..." -ForegroundColor Yellow
 Get-Process -Name "node*" -ErrorAction SilentlyContinue | Stop-Process -Force
-Start-Process cmd -ArgumentList "/c","npm","run","dev" -WorkingDirectory "$PSScriptRoot\frontend"
+$fsi = New-Object System.Diagnostics.ProcessStartInfo
+$fsi.FileName = "node"
+$fsi.Arguments = "node_modules\vite\bin\vite.js --host 127.0.0.1 --port 3000"
+$fsi.WorkingDirectory = "$PSScriptRoot\frontend"
+$fsi.UseShellExecute = $true
+[System.Diagnostics.Process]::Start($fsi) | Out-Null
 Start-Sleep 4
 
 Write-Host ""
