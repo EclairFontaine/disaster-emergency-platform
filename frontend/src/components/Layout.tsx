@@ -75,14 +75,14 @@ export default function AppLayout() {
 
   return (
     <Layout>
-      <Sider width={220} theme="dark" style={{ minHeight: '100vh' }}>
-        <div style={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Typography.Title level={4} style={{ color: '#fff', margin: 0, fontSize: 16 }}>
+      <Sider width={220} theme="light" style={{ minHeight: '100vh' }}>
+        <div style={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid #e9ecef' }}>
+          <span style={{ fontSize: 16, fontWeight: 700, color: '#212529', letterSpacing: 0.5 }}>
             应急协同决策平台
-          </Typography.Title>
+          </span>
         </div>
         <Menu
-          theme="dark"
+          theme="light"
           mode="inline"
           selectedKeys={[selectedKey]}
           items={menus.map((m) => ({

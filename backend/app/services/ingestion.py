@@ -1,4 +1,4 @@
-"""采集数据入库管线 - USGS地震+气象写入DB，自动创建灾情"""
+"""采集数据入库管线 — USGS+GDACS+气象写入DB"""
 
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,7 +7,7 @@ from sqlalchemy import select
 from app.models.all import Incident, CollectedEvent
 from app.services.collectors.earthquake import EarthquakeCollector
 from app.services.collectors.weather import WeatherCollector
-from app.services.collectors.warning import WarningCollector
+from app.services.collectors.gdacs import GdacsCollector
 
 
 async def ingest_earthquake_events(db: AsyncSession) -> list[int]:
@@ -27,14 +27,23 @@ async def ingest_earthquake_events(db: AsyncSession) -> list[int]:
         lat = event.get("latitude", 0)
         lng = event.get("longitude", 0)
 
-        # 检查去重
+        # 检查去重: 先按external_id，再按标题+坐标 (<0.1度)
         existing = await db.execute(
-            select(CollectedEvent).where(
-                CollectedEvent.source == "USGS",
-                CollectedEvent.external_id == event.get("event_id", ""),
-            )
+            select(CollectedEvent).where(CollectedEvent.external_id == event.get("event_id", ""))
         )
         if existing.scalar_one_or_none():
+            continue
+        # 二次去重: 同标题+邻近坐标
+        nearby = await db.execute(
+            select(CollectedEvent).where(
+                CollectedEvent.title == title,
+                CollectedEvent.latitude >= lat - 0.1,
+                CollectedEvent.latitude <= lat + 0.1,
+                CollectedEvent.longitude >= lng - 0.1,
+                CollectedEvent.longitude <= lng + 0.1,
+            )
+        )
+        if nearby.scalar_one_or_none():
             continue
 
         # 保存事件记录
@@ -142,8 +151,67 @@ async def ingest_weather_events(db: AsyncSession) -> list[int]:
     return created_ids
 
 
+async def ingest_gdacs_events(db: AsyncSession) -> list[int]:
+    """GDACS灾害数据 -> 保存记录 + Orange/Red级别创建灾情"""
+    collector = GdacsCollector()
+    events = await collector.collect()
+    created_ids = []
+
+    for event in events:
+        if "error" in event:
+            continue
+        
+        ext_id = f"gdacs-{event.get('event_id','')}"
+        existing = await db.execute(
+            select(CollectedEvent).where(CollectedEvent.external_id == ext_id)
+        )
+        if existing.scalar_one_or_none():
+            continue
+        
+        title = event.get("title", "GDACS事件")
+        ce = CollectedEvent(
+            source="GDACS",
+            event_type=event.get("event_type", "other"),
+            external_id=ext_id,
+            title=title,
+            data=event,
+            latitude=event.get("latitude"),
+            longitude=event.get("longitude"),
+            magnitude=event.get("magnitude"),
+        )
+        db.add(ce)
+        await db.flush()
+
+        # Orange/Red 预警自动创建灾情
+        alert = event.get("alert_level", "Green")
+        if alert in ("Orange", "Red"):
+            sev = "P2" if alert == "Red" else "P3"
+            incident = Incident(
+                title=title,
+                description=f"GDACS实时预警：{event.get('place','')} 等级：{alert}",
+                category=event.get("event_type", "other"),
+                severity=sev,
+                latitude=event.get("latitude"),
+                longitude=event.get("longitude"),
+                affected_count=0,
+                risk_radius=20000 if alert == "Red" else 10000,
+                reported_by=1,
+                status="pending_review",
+                extra_data={"source":"GDACS","auto_collected":True},
+                created_at=datetime.now(timezone.utc),
+            )
+            db.add(incident)
+            await db.flush()
+            await db.refresh(incident)
+            ce.created_incident_id = incident.id
+            created_ids.append(incident.id)
+
+    await db.flush()
+    return created_ids
+
+
 async def run_ingestion(db: AsyncSession) -> dict:
-    result = {"earthquake": [], "weather": []}
+    result = {"earthquake": [], "weather": [], "gdacs": []}
     try:
         result["earthquake"] = await ingest_earthquake_events(db)
     except Exception as e:
@@ -152,6 +220,10 @@ async def run_ingestion(db: AsyncSession) -> dict:
         result["weather"] = await ingest_weather_events(db)
     except Exception as e:
         result["weather_error"] = str(e)
+    try:
+        result["gdacs"] = await ingest_gdacs_events(db)
+    except Exception as e:
+        result["gdacs_error"] = str(e)
     return result
 
 

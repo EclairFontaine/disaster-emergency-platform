@@ -35,7 +35,7 @@ async def get_statistics(
     incidents_by_severity = {row[0]: row[1] for row in sev_result.all()}
 
     recent = (await db.execute(
-        select(Incident).order_by(Incident.created_at.desc()).limit(10)
+        select(Incident).order_by(Incident.created_at.desc()).limit(50)
     )).scalars().all()
 
     return StatisticsResponse(

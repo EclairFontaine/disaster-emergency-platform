@@ -82,12 +82,15 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null)
   const [rtStatus, setRtStatus] = useState<any>(null)
   const [collectedEvents, setCollectedEvents] = useState<any[]>([])
+  const [allIncidents, setAllIncidents] = useState<any[]>([])
   const [selectedIncident, setSelectedIncident] = useState<any>(null)
+  const [eventsExpanded, setEventsExpanded] = useState(false)
   const navigate = useNavigate()
 
   useEffect(() => {
     Promise.all([
       api.getStatistics().then(setStats),
+      api.listIncidents({ limit: 100 }).then(setAllIncidents),
       fetchRealTimeStatus(),
       fetchLatestEvents(),
     ]).finally(() => setLoading(false))
@@ -98,7 +101,7 @@ export default function Dashboard() {
   }
 
   const fetchLatestEvents = () => {
-    return api.getLatestEvents({ limit: 10 }).then(setCollectedEvents).catch(() => {})
+    return api.getLatestEvents({ limit: 50 }).then(setCollectedEvents).catch(() => {})
   }
 
   if (loading) return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />
@@ -116,119 +119,54 @@ export default function Dashboard() {
     <div>
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={16}>
-          <Card title="灾情态势地图" bodyStyle={{ padding: 0, height: 450 }}>
-            <MapView incidents={stats.recent_incidents} height={450} onIncidentClick={setSelectedIncident} />
+          <Card title="灾情态势地图" styles={{ body: { padding: 0, height: 450 } }}>
+            <MapView incidents={allIncidents} height={450} onIncidentClick={setSelectedIncident} />
           </Card>
         </Col>
         <Col xs={24} lg={8}>
           <Row gutter={[8, 8]}>
-            <Col span={12}>
-              <Card><Statistic title="总灾情数" value={stats.total_incidents} prefix={<AlertOutlined />} /></Card>
-            </Col>
-            <Col span={12}>
-              <Card><Statistic title="活跃灾情" value={stats.active_incidents} prefix={<CheckCircleOutlined />} valueStyle={{ color: '#cf1322' }} /></Card>
-            </Col>
-            <Col span={12}>
-              <Card><Statistic title="可用资源" value={stats.total_resources} prefix={<DatabaseOutlined />} /></Card>
-            </Col>
-            <Col span={12}>
-              <Card><Statistic title="已调度" value={stats.dispatched_resources} prefix={<CarOutlined />} valueStyle={{ color: '#1890ff' }} /></Card>
-            </Col>
+            <Col span={12}><Card><Statistic title="总灾情数" value={stats.total_incidents} prefix={<AlertOutlined />} /></Card></Col>
+            <Col span={12}><Card><Statistic title="活跃灾情" value={stats.active_incidents} prefix={<CheckCircleOutlined />} valueStyle={{ color: '#e03131' }} /></Card></Col>
+            <Col span={12}><Card><Statistic title="可用资源" value={stats.total_resources} prefix={<DatabaseOutlined />} /></Card></Col>
+            <Col span={12}><Card><Statistic title="已调度" value={stats.dispatched_resources} prefix={<CarOutlined />} valueStyle={{ color: '#1971c2' }} /></Card></Col>
           </Row>
         </Col>
       </Row>
 
+      {/* 实时采集 - 状态+事件合一 */}
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
         <Col span={24}>
-          <Card
-            title={<span><CloudOutlined style={{ marginRight: 8 }} />实时数据采集</span>}
-            extra={<Badge status="processing" text="每30分钟自动采集" />}
-            size="small"
-          >
-            <Descriptions size="small" column={4}>
-              {rtStatus?.earthquake && (
-                <Descriptions.Item label="USGS 地震监测">
-                  <Badge status={rtStatus.earthquake.last_fetch ? 'success' : 'processing'} text={rtStatus.earthquake.last_fetch ? `${rtStatus.earthquake.count}条` : '采集中'} />
-                </Descriptions.Item>
-              )}
-              {rtStatus?.weather && (
-                <>
-                  <Descriptions.Item label="和风天气">
-                    {rtStatus.weather.sources?.qweather?.configured
-                      ? <Badge status="processing" text="运行中" />
-                      : <Badge status="default" text="需配置 QWEATHER_API_KEY" />
-                    }
-                  </Descriptions.Item>
-                  <Descriptions.Item label="OpenWeatherMap">
-                    {rtStatus.weather.sources?.openweather?.configured
-                      ? <Badge status="processing" text="运行中" />
-                      : <Badge status="default" text="需配置 OPENWEATHER_API_KEY" />
-                    }
-                  </Descriptions.Item>
-                </>
-              )}
-              {rtStatus?.warning && (
-                <Descriptions.Item label="国家预警信息">
-                  <Badge status={rtStatus.warning.last_fetch ? 'success' : 'warning'} text={rtStatus.warning.last_fetch ? `${rtStatus.warning.count}条` : '未获取'} />
-                </Descriptions.Item>
-              )}
-              <Descriptions.Item label="地震最新采集">
-                {rtStatus?.earthquake?.last_fetch || '数据采集中...'}
-              </Descriptions.Item>
-            </Descriptions>
+          <Card size="small" title={<span><CloudOutlined style={{ marginRight: 8 }} />实时采集</span>}
+            extra={
+              <Space>
+                <Button size="small" onClick={() => setEventsExpanded(!eventsExpanded)}>
+                  {eventsExpanded ? '收起' : `展开全部(${collectedEvents.length})`}
+                </Button>
+                <Button size="small" onClick={() => { fetchLatestEvents(); fetchRealTimeStatus() }}>刷新</Button>
+              </Space>
+            }>
+            {collectedEvents.length > 0 ? (
+              <Table 
+                dataSource={eventsExpanded ? collectedEvents : collectedEvents.slice(0, 6)} 
+                rowKey="id" size="small" 
+                pagination={eventsExpanded ? { pageSize: 20, size: 'small', showSizeChanger: false } : false}
+                columns={[
+                  { title: '来源', dataIndex: 'source', key: 'src', width: 70,
+                    render: (v: string) => <Tag>{v}</Tag> },
+                  { title: '事件', dataIndex: 'title', key: 't', ellipsis: true },
+                  { title: '数值', dataIndex: 'magnitude', key: 'v', width: 80,
+                    render: (v: number, r: any) => r.event_type==='earthquake'?`M${v}`:r.event_type==='weather'?`${v}°C`:`${v||'-'}` },
+                  { title: '时间', dataIndex: 'collected_at', key: 'tm', width: 140,
+                    render: (t: string) => t ? new Date(t).toLocaleString('zh-CN') : '-' },
+                ]} />
+            ) : (
+              <div style={{ textAlign: 'center', padding: 16, color: '#999' }}>暂无采集数据，点刷新获取</div>
+            )}
           </Card>
         </Col>
       </Row>
 
       <RoleTaskGuide stats={stats} />
-
-      {/* 实时采集事件 - 始终显示 */}
-      <Row gutter={[16, 16]} style={{ marginTop: 4 }}>
-        <Col span={24}>
-          <Card
-            size="small"
-            title={<span><CloudOutlined style={{ marginRight: 8 }} />实时采集数据（DB持久化·每5分钟更新）</span>}
-            extra={
-              <Space>
-                <Badge status={collectedEvents.length > 0 ? 'processing' : 'default'} 
-                  text={`已采集 ${collectedEvents.length} 条`} />
-                <Button size="small" type="primary" onClick={() => {
-                  fetchLatestEvents()
-                  fetchRealTimeStatus()
-                }}>🔄 刷新采集数据</Button>
-              </Space>
-            }
-          >
-            {collectedEvents.length > 0 ? (
-              <Table
-                dataSource={collectedEvents.slice(0, 8)}
-                rowKey="id"
-                size="small"
-                pagination={false}
-                columns={[
-                  { title: '来源', dataIndex: 'source', key: 'source', width: 70,
-                    render: (v: string) => <Tag color={v === 'USGS' ? 'red' : v === 'QWeather' ? 'blue' : 'orange'}>{v}</Tag> },
-                  { title: '影像', dataIndex: 'image_url', key: 'img', width: 70,
-                    render: (v: string) => v ? <img src={v} alt="" style={{width:60,height:40,objectFit:'cover',borderRadius:4}} /> : <Tag>无</Tag> },
-                  { title: '事件', dataIndex: 'title', key: 'title', ellipsis: true },
-                  { title: '震级/温度', dataIndex: 'magnitude', key: 'magnitude', width: 90,
-                    render: (v: number, r: any) => r.event_type === 'earthquake' ? `M${v}` : `${v}C` },
-                  { title: '时间', dataIndex: 'collected_at', key: 'time', width: 160,
-                    render: (t: string) => t ? new Date(t).toLocaleString('zh-CN') : '-' },
-                  { title: '关联灾情', dataIndex: 'created_incident_id', key: 'incident', width: 80,
-                    render: (v: number) => v ? <Tag color="green">#{v}</Tag> : <Tag>未入库</Tag> },
-                ]}
-              />
-            ) : (
-              <div style={{ textAlign: 'center', padding: 20, color: '#999' }}>
-                <CloudOutlined style={{ fontSize: 32, marginBottom: 8 }} />
-                <br />
-                暂无采集数据，点击右上角「刷新采集数据」按钮获取实时数据
-              </div>
-            )}
-          </Card>
-        </Col>
-      </Row>
 
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
         <Col xs={24} md={12}>

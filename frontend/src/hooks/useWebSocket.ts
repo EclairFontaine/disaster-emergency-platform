@@ -22,8 +22,7 @@ export function useWebSocket({ onEvent }: UseWebSocketOptions = {}) {
     if (!token) return
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const host = window.location.host
-    const url = `${protocol}//${host}/api/ws?token=${token}`
+    const url = `${protocol}//${window.location.hostname}:8000/api/ws/?token=${token}`
 
     try {
       const ws = new WebSocket(url)

@@ -4,15 +4,18 @@ from typing import Optional
 from app.services.collectors.earthquake import EarthquakeCollector
 from app.services.collectors.weather import WeatherCollector
 from app.services.collectors.warning import WarningCollector
+from app.services.collectors.gdacs import GdacsCollector
 
 earthquake_collector = EarthquakeCollector()
 weather_collector = WeatherCollector()
 warning_collector = WarningCollector()
+gdacs_collector = GdacsCollector()
 
 CACHE: dict = {
     "earthquake": {"data": [], "time": None},
     "weather": {"data": [], "time": None},
     "warning": {"data": [], "time": None},
+    "gdacs": {"data": [], "time": None},
 }
 
 
@@ -22,6 +25,7 @@ async def collect_all() -> dict:
         ("earthquake", earthquake_collector),
         ("weather", weather_collector),
         ("warning", warning_collector),
+        ("gdacs", gdacs_collector),
     ]:
         try:
             data = await collector.run()
@@ -47,6 +51,12 @@ async def collect_weather() -> dict:
 async def collect_warnings() -> dict:
     data = await warning_collector.run()
     CACHE["warning"] = {"data": data, "time": datetime.now(timezone.utc).isoformat()}
+    return data
+
+
+async def collect_gdacs() -> dict:
+    data = await gdacs_collector.run()
+    CACHE["gdacs"] = {"data": data, "time": datetime.now(timezone.utc).isoformat()}
     return data
 
 

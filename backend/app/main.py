@@ -14,26 +14,27 @@ from sqlalchemy import select
 async def scheduled_ingestion():
     while True:
         try:
-            from app.services.collector import collect_earthquake, collect_weather, collect_warnings
-            # 并行采集所有数据源
+            from app.services.collector import collect_earthquake, collect_weather, collect_warnings, collect_gdacs
             results = await asyncio.gather(
-                collect_earthquake(),
-                collect_weather(),
-                collect_warnings(),
+                collect_earthquake(), collect_weather(), collect_warnings(), collect_gdacs(),
                 return_exceptions=True,
             )
-            eq_data, wx_data, wn_data = results
+            eq_data, wx_data, wn_data, gd_data = results
             eq_count = len(eq_data) if isinstance(eq_data, list) else 0
             wx_count = len(wx_data) if isinstance(wx_data, list) else 0
             wn_count = len(wn_data) if isinstance(wn_data, list) else 0
-            print(f"[Scheduler] 采集完成: 地震{eq_count} | 气象{wx_count} | 预警{wn_count}")
+            gd_count = len(gd_data) if isinstance(gd_data, list) else 0
+            print(f"[Scheduler] 采集: 地震{eq_count}|气象{wx_count}|预警{wn_count}|GDACS{gd_count}")
 
             # 地震数据自动入库
             async with AsyncSessionLocal() as db:
                 from app.services.ingestion import run_ingestion
                 result = await run_ingestion(db)
+                await db.commit()
                 if result.get("earthquake") and result["earthquake"]:
                     print(f"[Scheduler] 新灾情入库: {result['earthquake']}")
+                if result.get("weather") and result["weather"]:
+                    print(f"[Scheduler] 气象入库: {result['weather']}")
         except Exception as e:
             print(f"[Scheduler] 采集异常: {e}")
         await asyncio.sleep(300)  # 5 minutes for demo
@@ -47,6 +48,7 @@ async def _initial_ingestion():
         async with AsyncSessionLocal() as db:
             from app.services.ingestion import run_ingestion
             result = await run_ingestion(db)
+            await db.commit()
             eq_count = len(result.get("earthquake", []))
             wx_count = len(result.get("weather", []))
             print(f"[Startup] 初始采集完成: 地震{eq_count}条 气象{wx_count}条")
@@ -130,11 +132,11 @@ async def seed_data():
         pass
 
 
-app = FastAPI(title=settings.APP_NAME, version="1.0.0", lifespan=lifespan, redirect_slashes=False)
+app = FastAPI(title=settings.APP_NAME, version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins_list,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

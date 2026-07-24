@@ -164,15 +164,56 @@ AI引擎 → RAG检索预案+历史事件 → DeepSeek生成方案(SSE进度)
 
 ---
 
+---
+
 ## 数据采集
 
 | 来源 | 频率 | 说明 |
 |------|------|------|
 | USGS | 5分钟 | 全球地震，云南+周边(18-32°N,94-110°E)，≥1.5级，去重入库 |
+| GDACS | 5分钟 | 全球灾害预警（热带气旋/洪水/火山/地震），Orange/Red自动创建灾情 |
 | 和风天气 | 5分钟 | 昆明/大理/丽江/昭通/普洱5城实时气象 |
-| 历史数据 | 手动 | 通海7.7级(1970)~漾濞6.4级(2021)共15条地震 + 10条泥石流/洪水/火灾 |
+| 国家预警 | 5分钟 | 国家突发事件预警信息 |
+| 历史数据 | 手动 | 15条历史地震 + 10条非地震灾害（泥石流/洪水/火灾等） |
 
-≥3.0级地震自动创建灾情工单；极端天气自动预警。
+≥3.0级地震自动创建灾情工单；Orange/Red级GDACS预警自动创建灾情；极端天气自动预警。
+
+---
+
+## 测试
+
+### 本地运行
+
+```bash
+# 后端单元测试（无需数据库，74个用例）
+cd backend
+pytest ../tests/ -v
+
+# 后端全量测试（需要PostgreSQL，84个用例含10个集成测试）
+pytest ../tests/ -v -m "unit or integration"
+
+# 前端测试（42个用例，覆盖全部10个页面）
+cd frontend
+npx vitest run
+```
+
+### CI/CD 自动化
+
+每次 push 到 `main` 分支，GitHub Actions 自动运行全量测试：
+
+[![Test & Report](https://github.com/EclairFontaine/disaster-emergency-platform/actions/workflows/test.yml/badge.svg)](https://github.com/EclairFontaine/disaster-emergency-platform/actions/workflows/test.yml)
+
+配置文件：`.github/workflows/test.yml`
+
+### 测试覆盖
+
+| 维度 | 文件数 | 测试数 |
+|------|:---:|:---:|
+| 后端单元 | 3 | 74 |
+| 后端集成 | 1 | 10 |
+| 前端页面 | 10 | 40 |
+| 前端组件+服务 | 2 | 4 |
+| **合计** | **16** | **128** |
 
 ---
 
@@ -185,19 +226,21 @@ AI引擎 → RAG检索预案+历史事件 → DeepSeek生成方案(SSE进度)
 │   │   ├── core/         # 配置/安全/数据库/Milvus
 │   │   ├── models/       # 13个ORM模型
 │   │   ├── schemas/      # Pydantic校验
-│   │   └── services/     # 业务逻辑 + collectors采集器
-│   ├── alembic/          # 数据库迁移
+│   │   └── services/     # 业务逻辑 + collectors采集器(5个源)
+│   ├── alembic/          # 数据库迁移（V1.0初始版本）
 │   └── requirements.txt
 ├── frontend/
 │   ├── src/
-│   │   ├── pages/        # 10个页面
-│   │   ├── components/   # Layout/MapView
+│   │   ├── pages/        # 10个页面 + __tests__
+│   │   ├── components/   # Layout/MapView + __tests__
 │   │   ├── hooks/        # useWebSocket/useSSE
 │   │   ├── services/     # api.ts (60+ typed endpoints)
 │   │   └── store/        # Zustand
 │   ├── vite.config.ts
 │   └── package.json
-├── docs/                 # 需求/设计文档
+├── tests/                # 后端测试套件（61+10个用例）
+├── .github/workflows/    # CI/CD自动化测试
+├── docs/                 # 需求/设计/接口/测试报告
 ├── docker-compose.yml
 ├── START.bat             # 一键启动
 └── README.md

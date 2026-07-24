@@ -1,0 +1,26 @@
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+pythonpath = ["backend"]
+asyncio_mode = "auto"
+addopts = "-v --tb=short --strict-markers -m unit --ignore=backend/.venv --ignore=frontend"
+markers = [
+    "unit: 单元测试（不依赖外部服务，可独立运行）",
+    "integration: 集成测试（需要PostgreSQL数据库）",
+    "api: API端点测试（需要完整后端运行环境）",
+    "slow: 耗时测试",
+    "ai: AI相关测试（需要DeepSeek API Key）",
+]
+
+[tool.coverage.run]
+source = ["backend/app"]
+omit = ["backend/app/__init__.py", "backend/tests/*", "*/__pycache__/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]
