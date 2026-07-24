@@ -16,43 +16,27 @@ class TestHealth:
 
 @pytest.mark.integration
 class TestAuth:
-    """认证接口"""
+    """认证接口 — 使用已种子化的用户数据"""
 
     @pytest.mark.asyncio
-    async def test_login_success(self, client, db_session):
-        from app.core.security import hash_password
-        from app.models.all import Role, User
-        role = Role(name="admin", description="管理员")
-        db_session.add(role)
-        await db_session.flush()
-        user = User(username="testadmin", password_hash=hash_password("admin123"), real_name="测试", role_id=role.id)
-        db_session.add(user)
-        await db_session.flush()
-        await db_session.commit()
-
-        response = await client.post("/api/auth/login", json={"username": "testadmin", "password": "admin123"})
+    async def test_login_admin_success(self, client):
+        """测试种子管理员账号登录"""
+        response = await client.post("/api/auth/login", json={"username": "admin", "password": "admin123"})
         assert response.status_code == 200
         data = response.json()
         assert "access_token" in data
         assert data["token_type"] == "bearer"
+        assert data["user"]["username"] == "admin"
 
     @pytest.mark.asyncio
-    async def test_login_wrong_password(self, client, db_session):
-        from app.core.security import hash_password
-        from app.models.all import Role, User
-        role = Role(name="admin", description="管理员")
-        db_session.add(role)
-        await db_session.flush()
-        user = User(username="testadmin2", password_hash=hash_password("correct"), real_name="测试", role_id=role.id)
-        db_session.add(user)
-        await db_session.flush()
-        await db_session.commit()
-
-        response = await client.post("/api/auth/login", json={"username": "testadmin2", "password": "wrong"})
+    async def test_login_wrong_password(self, client):
+        """测试错误密码"""
+        response = await client.post("/api/auth/login", json={"username": "admin", "password": "wrong"})
         assert response.status_code == 401
 
     @pytest.mark.asyncio
     async def test_login_no_user(self, client):
+        """测试不存在的用户"""
         response = await client.post("/api/auth/login", json={"username": "nobody", "password": "x"})
         assert response.status_code == 401
 
@@ -67,7 +51,7 @@ class TestIncidentsAPI:
     """灾情管理接口"""
 
     @pytest.mark.asyncio
-    async def test_list_empty(self, client, auth_headers):
+    async def test_list_incidents(self, client, auth_headers):
         response = await client.get("/api/incidents", headers=auth_headers)
         assert response.status_code == 200
         assert isinstance(response.json(), list)
@@ -88,7 +72,7 @@ class TestResourcesAPI:
     """资源管理接口"""
 
     @pytest.mark.asyncio
-    async def test_list_empty(self, client, auth_headers):
+    async def test_list_resources(self, client, auth_headers):
         response = await client.get("/api/resources", headers=auth_headers)
         assert response.status_code == 200
         assert isinstance(response.json(), list)
