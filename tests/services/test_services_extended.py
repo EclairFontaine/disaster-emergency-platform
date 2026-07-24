@@ -419,6 +419,190 @@ class TestAITemplateEngine:
 
 
 @pytest.mark.unit
+class TestGdacsCollector:
+    """GDACS全球灾害预警采集器"""
+
+    def test_gdacs_collector_init(self):
+        from app.services.collectors.gdacs import GdacsCollector
+        c = GdacsCollector()
+        assert c.name == "GDACS"
+        assert "gdacs.org" in c.url
+
+    def test_gdacs_region_coverage(self):
+        from app.services.collectors.gdacs import GdacsCollector
+        c = GdacsCollector()
+        lat_min, lat_max, lng_min, lng_max = c.REGION
+        assert lat_min <= 18.0  # covers Yunnan
+        assert lat_max >= 30.0
+        assert lng_min <= 97.0
+        assert lng_max >= 110.0
+
+    def test_gdacs_type_map(self):
+        from app.services.collectors.gdacs import GdacsCollector
+        c = GdacsCollector()
+        assert c.TYPE_MAP["EQ"] == "earthquake"
+        assert c.TYPE_MAP["TC"] == "other"
+        assert c.TYPE_MAP["FL"] == "flood"
+        assert c.TYPE_LABELS["EQ"] == "地震"
+        assert c.TYPE_LABELS["FL"] == "洪水"
+
+    def test_gdacs_severity_map(self):
+        from app.services.collectors.gdacs import GdacsCollector
+        c = GdacsCollector()
+        assert c.SEVERITY_MAP["Green"] == 1
+        assert c.SEVERITY_MAP["Orange"] == 2
+        assert c.SEVERITY_MAP["Red"] == 3
+
+    @pytest.mark.asyncio
+    async def test_gdacs_collect_with_mock(self):
+        from app.services.collectors.gdacs import GdacsCollector
+        c = GdacsCollector()
+        mock_response = {
+            "features": [
+                {
+                    "properties": {
+                        "eventid": "12345",
+                        "eventtype": "EQ",
+                        "eventname": "Yunnan Earthquake",
+                        "alertlevel": "Red",
+                        "description": "Magnitude 6.0 near Kunming",
+                    },
+                    "geometry": {"coordinates": [102.68, 25.04]},
+                },
+                {
+                    "properties": {
+                        "eventid": "99999",
+                        "eventtype": "EQ",
+                        "eventname": "Tokyo Earthquake",
+                        "alertlevel": "Green",
+                        "description": "Far away",
+                    },
+                    "geometry": {"coordinates": [139.69, 35.69]},
+                },
+            ]
+        }
+        with patch.object(c, "fetch", new_callable=AsyncMock) as mock_fetch:
+            mock_fetch.return_value = mock_response
+            result = await c.collect()
+            assert len(result) == 1  # only Yunnan event in region
+            assert result[0]["source"] == "GDACS"
+            assert result[0]["alert_level"] == "Red"
+            assert result[0]["magnitude"] == 3
+
+    @pytest.mark.asyncio
+    async def test_gdacs_collect_network_error(self):
+        from app.services.collectors.gdacs import GdacsCollector
+        c = GdacsCollector()
+        with patch.object(c, "fetch", side_effect=Exception("Connection refused")):
+            result = await c.collect()
+            assert len(result) == 1
+            assert "error" in result[0]
+            assert result[0]["source"] == "GDACS"
+
+
+@pytest.mark.unit
+class TestIngestionExtended:
+    """采集入库管线 — GDACS"""
+
+    @pytest.mark.asyncio
+    async def test_run_ingestion_now_includes_gdacs(self):
+        from app.services.ingestion import run_ingestion
+        db = AsyncMock()
+        with patch("app.services.ingestion.ingest_earthquake_events", new_callable=AsyncMock) as mock_eq, \
+             patch("app.services.ingestion.ingest_weather_events", new_callable=AsyncMock) as mock_wx, \
+             patch("app.services.ingestion.ingest_gdacs_events", new_callable=AsyncMock) as mock_gd:
+            mock_eq.return_value = [1]
+            mock_wx.return_value = [2]
+            mock_gd.return_value = [3]
+            result = await run_ingestion(db)
+            assert result["earthquake"] == [1]
+            assert result["weather"] == [2]
+            assert result["gdacs"] == [3]
+            mock_gd.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_run_ingestion_gdacs_error(self):
+        from app.services.ingestion import run_ingestion
+        db = AsyncMock()
+        with patch("app.services.ingestion.ingest_earthquake_events", new_callable=AsyncMock) as mock_eq, \
+             patch("app.services.ingestion.ingest_weather_events", new_callable=AsyncMock) as mock_wx, \
+             patch("app.services.ingestion.ingest_gdacs_events", side_effect=Exception("GDACS unavailable")):
+            mock_eq.return_value = []
+            mock_wx.return_value = []
+            result = await run_ingestion(db)
+            assert "gdacs_error" in result
+            assert result["earthquake"] == []
+
+    @pytest.mark.asyncio
+    async def test_ingest_gdacs_creates_incident_for_orange_red(self):
+        from app.services.ingestion import ingest_gdacs_events
+        from app.services.collectors.gdacs import GdacsCollector
+        from app.models.all import CollectedEvent
+        db = AsyncMock()
+
+        gdacs_event = {
+            "source": "GDACS",
+            "event_id": "12345",
+            "title": "洪水预警：TestFlood",
+            "event_type": "flood",
+            "alert_level": "Red",
+            "magnitude": 3,
+            "latitude": 25.0,
+            "longitude": 102.0,
+            "place": "云南昆明",
+        }
+
+        # First db.execute call: check duplicate (none found)
+        result_none = MagicMock()
+        result_none.scalar_one_or_none.return_value = None
+        db.execute.side_effect = [result_none]
+
+        with patch.object(GdacsCollector, "collect", new_callable=AsyncMock) as mock_collect:
+            mock_collect.return_value = [gdacs_event]
+            result = await ingest_gdacs_events(db)
+            assert len(result) >= 1
+
+
+@pytest.mark.unit
+class TestCollectorOrchestrationExtended:
+    """采集器编排层 — GDACS"""
+
+    def test_gdacs_instance_exists(self):
+        from app.services.collector import gdacs_collector
+        from app.services.collectors.gdacs import GdacsCollector
+        assert isinstance(gdacs_collector, GdacsCollector)
+
+    def test_cache_includes_gdacs(self):
+        from app.services.collector import CACHE
+        assert "gdacs" in CACHE
+        assert isinstance(CACHE["gdacs"], dict)
+
+    @pytest.mark.asyncio
+    async def test_collect_all_now_includes_gdacs(self):
+        from app.services.collector import collect_all
+        with patch("app.services.collector.earthquake_collector", autospec=True) as mock_eq, \
+             patch("app.services.collector.weather_collector", autospec=True) as mock_wx, \
+             patch("app.services.collector.warning_collector", autospec=True) as mock_wn, \
+             patch("app.services.collector.gdacs_collector", autospec=True) as mock_gd:
+            mock_eq.run = AsyncMock(return_value=[])
+            mock_wx.run = AsyncMock(return_value=[])
+            mock_wn.run = AsyncMock(return_value=[])
+            mock_gd.run = AsyncMock(return_value=[{"alert_level": "Red"}])
+            results = await collect_all()
+            assert "gdacs" in results
+            assert results["gdacs"]["status"] == "ok"
+
+    @pytest.mark.asyncio
+    async def test_collect_gdacs_function(self):
+        from app.services.collector import collect_gdacs, CACHE
+        with patch("app.services.collector.gdacs_collector", autospec=True) as mock_gd:
+            mock_gd.run = AsyncMock(return_value=[{"title": "test"}])
+            data = await collect_gdacs()
+            assert len(data) == 1
+            assert CACHE["gdacs"]["data"] is not None
+
+
+@pytest.mark.unit
 class TestConfigExtended:
     """配置扩展测试"""
 
