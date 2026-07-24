@@ -18,14 +18,14 @@ Write-Host "      PostgreSQL ready" -ForegroundColor Green
 # 3. Backend
 Write-Host "[3/4] Starting Backend (port 8000)..." -ForegroundColor Yellow
 Get-Process -Name "python*" -ErrorAction SilentlyContinue | Stop-Process -Force
-Start-Process python -ArgumentList "-m","uvicorn","app.main:app","--host","127.0.0.1","--port","8000" -WorkingDirectory "$PSScriptRoot\backend"
+Start-Process cmd -ArgumentList "/c","python","-m","uvicorn","app.main:app","--host","127.0.0.1","--port","8000" -WorkingDirectory "$PSScriptRoot\backend"
 Start-Sleep 8
 Write-Host "      Backend ready" -ForegroundColor Green
 
 # 4. Frontend
 Write-Host "[4/4] Starting Frontend (port 3000)..." -ForegroundColor Yellow
 Get-Process -Name "node*" -ErrorAction SilentlyContinue | Stop-Process -Force
-Start-Process npx -ArgumentList "vite","--host","127.0.0.1","--port","3000" -WorkingDirectory "$PSScriptRoot\frontend"
+Start-Process cmd -ArgumentList "/c","npm","run","dev" -WorkingDirectory "$PSScriptRoot\frontend"
 Start-Sleep 4
 
 Write-Host ""
