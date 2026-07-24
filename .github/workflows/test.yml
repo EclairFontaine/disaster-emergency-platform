@@ -36,6 +36,7 @@ jobs:
         run: |
           pip install -r backend/requirements.txt
           pip install pytest pytest-asyncio aiosqlite
+          mkdir -p reports
 
       - name: Run backend tests
         env:
@@ -44,8 +45,7 @@ jobs:
           JWT_SECRET: yunnan-disaster-jwt-secret-2024
           DEEPSEEK_API_KEY: sk-placeholder
         run: |
-          cd backend
-          python -m pytest ../tests/ -v --tb=short --junitxml=../reports/pytest.xml
+          python -m pytest tests/ -v --tb=short --junitxml=reports/pytest.xml
         continue-on-error: true
 
       - name: Upload backend test report
@@ -66,15 +66,13 @@ jobs:
           node-version: '20'
 
       - name: Install frontend dependencies
-        run: cd frontend && npm ci
+        run: |
+          cd frontend
+          npm install
+          mkdir -p ../reports
 
       - name: Run frontend tests
-        run: cd frontend && npx vitest run --reporter=junit --outputFile=../reports/vitest.xml
+        run: |
+          cd frontend
+          npx vitest run --reporter=verbose
         continue-on-error: true
-
-      - name: Upload frontend test report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: frontend-test-report
-          path: reports/vitest.xml
