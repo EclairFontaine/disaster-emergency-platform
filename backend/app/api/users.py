@@ -5,7 +5,7 @@ from sqlalchemy.orm import selectinload
 from typing import List, Optional
 
 from app.core.database import get_db
-from app.core.security import get_current_user, require_admin, hash_password
+from app.core.security import get_current_user, require_admin, hash_password, validate_password_strength
 from app.models.all import User, Role
 from app.schemas.all import UserCreate, UserResponse, UserUpdate, RoleResponse
 from app.services.audit import log_action
@@ -41,6 +41,10 @@ async def create_user(
     existing = await db.execute(select(User).where(User.username == data.username))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="用户名已存在")
+
+    valid, msg = validate_password_strength(data.password)
+    if not valid:
+        raise HTTPException(status_code=400, detail=msg)
 
     new_user = User(
         username=data.username,
@@ -89,6 +93,9 @@ async def update_user(
 
     update_data = data.model_dump(exclude_unset=True)
     if "password" in update_data:
+        valid, msg = validate_password_strength(update_data["password"])
+        if not valid:
+            raise HTTPException(status_code=400, detail=msg)
         update_data["password_hash"] = hash_password(update_data.pop("password"))
     for key, value in update_data.items():
         setattr(u, key, value)

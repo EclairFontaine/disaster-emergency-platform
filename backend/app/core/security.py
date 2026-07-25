@@ -67,5 +67,14 @@ require_admin = require_role("admin")
 require_commander = require_role("admin", "emergency_commander")
 require_reporter = require_role("admin", "info_reporter")
 require_resource_manager = require_role("admin", "resource_manager")
-# 资源操作权限：管理员+指挥员+资源管理员都能调度
 require_resource_ops = require_role("admin", "emergency_commander", "resource_manager")
+
+
+def validate_password_strength(password: str):
+    if len(password) < 6:
+        return False, "密码至少需要6位字符"
+    has_alpha = any(c.isalpha() for c in password)
+    has_digit = any(c.isdigit() for c in password)
+    if not has_alpha or not has_digit:
+        return False, "密码必须包含字母和数字"
+    return True, ""

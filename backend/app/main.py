@@ -1,7 +1,11 @@
 from contextlib import asynccontextmanager
 import asyncio
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from app.core.config import settings
 from app.core.database import init_db, AsyncSessionLocal
@@ -9,6 +13,8 @@ from app.core.milvus import connect_milvus, disconnect_milvus, create_plan_chunk
 from app.core.security import hash_password
 from app.models.all import Role, User
 from sqlalchemy import select
+
+limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
 
 
 async def scheduled_ingestion():
@@ -134,6 +140,9 @@ async def seed_data():
 
 app = FastAPI(title=settings.APP_NAME, version="1.0.0", lifespan=lifespan)
 
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -141,6 +150,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def limit_body_size(request: Request, call_next):
+    max_size = 10 * 1024 * 1024
+    if request.method in ("POST", "PUT", "PATCH"):
+        content_length = request.headers.get("content-length")
+        if content_length and int(content_length) > max_size:
+            return JSONResponse(status_code=413, content={"detail": "请求体过大，最大允许 10MB"})
+    return await call_next(request)
 
 from app.api import auth, incidents, resources, plans, agent, datasources, users, websocket, audit, statistics, collector
 

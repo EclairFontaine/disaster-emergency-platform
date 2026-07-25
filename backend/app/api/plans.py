@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 from fastapi.responses import StreamingResponse
 import asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,6 +15,7 @@ from app.schemas.all import (
 from app.services.rag import search_plans
 from app.services.agent_runner import run_plan_generation
 from app.services.audit import log_action
+from app.main import limiter
 
 router = APIRouter(prefix="/api/plans", tags=["应急预案"])
 
@@ -115,8 +116,10 @@ async def _run_generation_in_background(incident_id: int, agent_run_id: int):
 
 
 @router.post("/generate")
+@limiter.limit("3/minute")
 async def generate_plan(
     data: PlanGenerateRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):

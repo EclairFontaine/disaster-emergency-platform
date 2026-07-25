@@ -140,7 +140,7 @@ class TestUsersAPI:
     @pytest.mark.asyncio
     async def test_create_and_delete_user(self, client, auth_headers):
         create_resp = await client.post("/api/users", json={
-            "username": "test_user_temp", "password": "123456", "real_name": "测试", "role_id": 2
+            "username": "test_user_temp", "password": "test123456", "real_name": "测试", "role_id": 2
         }, headers=auth_headers)
         assert create_resp.status_code == 201
         user_id = create_resp.json()["id"]
