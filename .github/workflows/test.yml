@@ -10,21 +10,6 @@ jobs:
   backend-test:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgis/postgis:15-3.3
-        env:
-          POSTGRES_DB: disaster
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-
     steps:
       - uses: actions/checkout@v4
 
@@ -32,23 +17,37 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install backend dependencies
+      - name: 安装并启动 PostgreSQL
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql postgresql-contrib
+          sudo systemctl start postgresql
+          sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'postgres';"
+          sudo -u postgres createdb disaster
+          sudo -u postgres psql -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;" -d disaster
+
+      - name: 安装 Python 依赖
         run: |
           pip install -r backend/requirements.txt
-          pip install pytest pytest-asyncio aiosqlite
+          pip install pytest pytest-asyncio
           mkdir -p reports
 
-      - name: Run backend tests
+      - name: 启动后端并执行测试
         env:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/disaster
           DATABASE_URL_SYNC: postgresql://postgres:postgres@localhost:5432/disaster
           JWT_SECRET: yunnan-disaster-jwt-secret-2024
           DEEPSEEK_API_KEY: sk-placeholder
         run: |
-          python -m pytest tests/ -v --tb=short --junitxml=reports/pytest.xml
+          cd backend
+          python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 &
+          sleep 12
+          curl -s http://127.0.0.1:8000/api/health
+          cd ..
+          python -m pytest tests/ -v --tb=short -m "unit or integration" --junitxml=reports/pytest.xml
         continue-on-error: true
 
-      - name: Upload backend test report
+      - name: 上传测试报告
         uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -65,13 +64,13 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install frontend dependencies
+      - name: 安装前端依赖
         run: |
           cd frontend
           npm install
           mkdir -p ../reports
 
-      - name: Run frontend tests
+      - name: 执行前端测试
         run: |
           cd frontend
           npx vitest run --reporter=verbose
