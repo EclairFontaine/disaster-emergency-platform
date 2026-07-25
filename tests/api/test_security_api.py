@@ -53,8 +53,6 @@ class TestRateLimitAPI:
             "username": "admin", "password": "wrong"
         })
         assert response.status_code in (401, 429)
-        headers = response.headers
-        assert "x-ratelimit-limit" in headers or "retry-after" in headers or True
 
     @pytest.mark.asyncio
     async def test_body_size_limit_rejects_large_request(self, client, auth_headers):

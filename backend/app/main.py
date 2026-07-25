@@ -143,6 +143,14 @@ app = FastAPI(title=settings.APP_NAME, version="1.0.0", lifespan=lifespan)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "服务器内部错误", "type": type(exc).__name__},
+    )
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
