@@ -55,7 +55,10 @@ async def create_user(
     )
     db.add(new_user)
     await db.flush()
-    await db.refresh(new_user)
+    result = await db.execute(
+        select(User).options(selectinload(User.role)).where(User.id == new_user.id)
+    )
+    new_user = result.scalar_one()
     await log_action(db, user.id, "create", "user", new_user.id)
 
     role_data = RoleResponse.model_validate(new_user.role) if new_user.role else None

@@ -37,11 +37,14 @@ class TestPasswordValidationAPI:
     @pytest.mark.asyncio
     async def test_create_user_strong_pwd_passes_validation(self, client, auth_headers):
         response = await client.post("/api/users", json={
-            "username": "test_strong_001",
+            "username": "test_strong_002",
             "password": "strongpwd123",
+            "real_name": "测试强密码",
             "role_id": 2,
         }, headers=auth_headers)
-        assert response.status_code != 400
+        assert response.status_code == 201
+        uid = response.json()["id"]
+        await client.delete(f"/api/users/{uid}", headers=auth_headers)
 
 
 @pytest.mark.integration
