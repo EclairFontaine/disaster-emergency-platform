@@ -80,6 +80,25 @@ async def list_incidents(
     return [IncidentResponse.model_validate(i) for i in incidents]
 
 
+@router.get("/nearby", response_model=List[IncidentResponse])
+async def get_nearby_incidents(
+    lat: float = Query(...),
+    lng: float = Query(...),
+    radius: float = Query(10000, description="半径(米)"),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    result = await db.execute(select(Incident))
+    all_incidents = result.scalars().all()
+    nearby = []
+    for inc in all_incidents:
+        if inc.latitude and inc.longitude:
+            dist = haversine(lat, lng, inc.latitude, inc.longitude)
+            if dist <= radius:
+                nearby.append(IncidentResponse.model_validate(inc))
+    return nearby
+
+
 @router.get("/{incident_id}", response_model=IncidentResponse)
 async def get_incident(incident_id: int, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
     result = await db.execute(select(Incident).where(Incident.id == incident_id))
@@ -148,25 +167,6 @@ async def update_status(
     except Exception:
         pass
     return resp
-
-
-@router.get("/nearby", response_model=List[IncidentResponse])
-async def get_nearby_incidents(
-    lat: float = Query(...),
-    lng: float = Query(...),
-    radius: float = Query(10000, description="半径(米)"),
-    db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
-):
-    result = await db.execute(select(Incident))
-    all_incidents = result.scalars().all()
-    nearby = []
-    for inc in all_incidents:
-        if inc.latitude and inc.longitude:
-            dist = haversine(lat, lng, inc.latitude, inc.longitude)
-            if dist <= radius:
-                nearby.append(IncidentResponse.model_validate(inc))
-    return nearby
 
 
 @router.post("/{incident_id}/reports", response_model=IncidentReportResponse, status_code=201)
