@@ -41,7 +41,7 @@ class DeepSeekClient:
             "Content-Type": "application/json",
         }
         body = {
-            "model": "deepseek-chat",
+            "model": "deepseek-v4-flash",
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,

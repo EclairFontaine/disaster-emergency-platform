@@ -66,9 +66,10 @@ export default function PlanWorkbench() {
   }
 
   const handleSave = async () => {
-    if (!generatedPlan?.plan_id) { message.warning('未找到方案ID'); return }
+    if (!generatedPlan?.plan_id && !generatedPlan?.id) { message.warning('未找到方案ID'); return }
+    const pid = generatedPlan.plan_id || generatedPlan.id
     try {
-      await api.updatePlan(generatedPlan.plan_id, { content: editContent })
+      await api.updatePlan(pid, { content: editContent })
       message.success('方案已保存')
       refreshPlans()
     } catch (err: any) {
@@ -77,9 +78,10 @@ export default function PlanWorkbench() {
   }
 
   const handleReview = async (status: string) => {
-    if (!generatedPlan?.plan_id) { message.warning('未找到方案ID'); return }
+    if (!generatedPlan?.plan_id && !generatedPlan?.id) { message.warning('未找到方案ID'); return }
+    const pid = generatedPlan.plan_id || generatedPlan.id
     try {
-      await api.reviewPlan(generatedPlan.plan_id, { status })
+      await api.reviewPlan(pid, { status })
       message.success(status === 'approved' ? '方案已批准，调度单已自动执行！' : '方案已驳回')
       refreshPlans()
     } catch (err: any) {

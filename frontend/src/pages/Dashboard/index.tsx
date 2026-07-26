@@ -120,7 +120,7 @@ export default function Dashboard() {
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={16}>
           <Card title="灾情态势地图" styles={{ body: { padding: 0, height: 450 } }}>
-            <MapView incidents={allIncidents} height={450} onIncidentClick={setSelectedIncident} />
+            <MapView incidents={allIncidents.filter((i: any) => i.status !== 'closed')} height={450} onIncidentClick={setSelectedIncident} />
           </Card>
         </Col>
         <Col xs={24} lg={8}>

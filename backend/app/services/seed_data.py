@@ -289,23 +289,16 @@ DATA_SOURCES = [
 
 
 async def seed_demo_data(db: AsyncSession):
-    from sqlalchemy import delete as sqla_delete
-    from app.models.all import IncidentReport, AgentRun, Citation, AuditLog, ResourceLock, DispatchOrder
+    from app.models.all import Incident, EmergencyPlan as Ep, Resource as Res, DataSource as Ds
+    from sqlalchemy import func
 
-    # Delete in correct order (children first to avoid FK violations)
-    await db.execute(sqla_delete(Citation))
-    await db.execute(sqla_delete(AgentRun))
-    await db.execute(sqla_delete(IncidentReport))
-    await db.execute(sqla_delete(ResourceLock))
-    await db.execute(sqla_delete(DispatchOrder))
-    await db.execute(sqla_delete(AuditLog))
-    await db.execute(sqla_delete(Incident))
-    await db.execute(sqla_delete(Resource))
-    await db.execute(sqla_delete(EmergencyPlan))
-    await db.execute(sqla_delete(DataSource))
-    await db.flush()
+    # Only seed if incidents table is empty (first run)
+    count = (await db.execute(select(func.count(Incident.id)))).scalar() or 0
+    if count > 0:
+        print(f"[Seed] Skipping: {count} incidents already exist")
+        return
 
-    # Re-insert everything
+    # First run: insert seed data
     for p in EMERGENCY_PLANS:
         db.add(EmergencyPlan(title=p["title"], content=p["content"], generated_by="manual"))
     await db.flush()
