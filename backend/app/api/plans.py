@@ -1,13 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 from fastapi.responses import StreamingResponse
 import asyncio
+import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import Optional, List
 
+from app.core.config import settings as app_settings
 from app.core.database import get_db
 from app.core.security import get_current_user, require_commander, require_admin
-from app.models.all import EmergencyPlan, User, AgentRun, DispatchOrder
+from app.models.all import EmergencyPlan, User, AgentRun, DispatchOrder, Incident, Citation
 from app.schemas.all import (
     EmergencyPlanCreate, EmergencyPlanResponse, EmergencyPlanUpdate,
     PlanSearchRequest, PlanReviewRequest, PlanGenerateRequest,
@@ -123,10 +125,116 @@ async def generate_plan(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    from app.services.agent_runner import run_plan_generation
-    run = await run_plan_generation(db, data.incident_id)
-    await log_action(db, user.id, "generate_plan", "plan", None, {"incident_id": data.incident_id, "agent_run_id": run.id})
+    if app_settings.AI_SERVICE_URL:
+        run = await _generate_via_ai_service(db, data.incident_id)
+        mode = "ai_service"
+    else:
+        run = await run_plan_generation(db, data.incident_id)
+        mode = "local"
+
+    await log_action(db, user.id, "generate_plan", "plan", None, {
+        "incident_id": data.incident_id, "agent_run_id": run.id, "mode": mode,
+    })
     return {"agent_run_id": run.id, "status": run.status}
+
+
+async def _generate_via_ai_service(db: AsyncSession, incident_id: int) -> AgentRun:
+    from datetime import datetime, timezone
+    from app.services.ai_engine import search_historical_events
+    from app.services.resource_auto_dispatcher import auto_match_and_dispatch
+
+    result = await db.execute(select(Incident).where(Incident.id == incident_id))
+    incident = result.scalar_one_or_none()
+    if not incident:
+        raise HTTPException(status_code=404, detail="灾情不存在")
+
+    run = AgentRun(
+        incident_id=incident_id, run_type="generate",
+        input_data={"incident": incident.title, "mode": "ai_service"},
+        status="running",
+    )
+    db.add(run)
+    await db.flush()
+    await db.refresh(run)
+
+    plans = await search_plans(db, f"{incident.title or ''} {incident.description or ''} {incident.category or ''}")
+    matched_plans = [{"title": p.title, "content": (p.content or "")[:500]} for p in plans[:3]]
+
+    hist_events = await search_historical_events(db, incident, limit=5)
+
+    payload = {
+        "incident_id": incident_id,
+        "incident": {
+            "title": incident.title, "description": incident.description,
+            "category": incident.category, "severity": incident.severity,
+            "latitude": incident.latitude, "longitude": incident.longitude,
+            "affected_count": incident.affected_count,
+        },
+        "matched_plans": matched_plans,
+        "historical_events": hist_events,
+    }
+
+    async with httpx.AsyncClient(timeout=httpx.Timeout(120.0)) as client:
+        resp = await client.post(f"{app_settings.AI_SERVICE_URL}/api/v1/generate-plan", json=payload)
+        resp.raise_for_status()
+        ai_result = resp.json()
+
+    if ai_result.get("status") == "failed":
+        run.status = "failed"
+        run.error_message = ai_result.get("error", "AI服务调用失败")
+        run.finished_at = datetime.now(timezone.utc)
+        await db.flush()
+        await db.refresh(run)
+        return run
+
+    plan_content = ai_result.get("plan_content")
+    if not plan_content:
+        run.status = "failed"
+        run.error_message = "AI服务返回空方案"
+        run.finished_at = datetime.now(timezone.utc)
+        await db.flush()
+        await db.refresh(run)
+        return run
+    source_refs = ai_result.get("source_refs", [])
+    provider = ai_result.get("provider", "unknown")
+
+    plan = EmergencyPlan(
+        incident_id=incident_id,
+        title=f"应急方案-{incident.title}",
+        content=f"{plan_content}\n\n---\n*本方案由 AI微服务({provider})生成，请指挥人员审核后执行。*",
+        generated_by="ai",
+        source_refs=source_refs,
+    )
+    db.add(plan)
+    await db.flush()
+    await db.refresh(plan)
+
+    for cit in ai_result.get("citations", []):
+        db.add(Citation(
+            agent_run_id=run.id,
+            doc_name=cit.get("doc_name", ""),
+            chunk_text=(cit.get("chunk_text", "") or "")[:1000],
+            relevance_score=cit.get("score", 0),
+        ))
+
+    dispatches = []
+    try:
+        dispatches = await auto_match_and_dispatch(db, incident, plan.id)
+    except Exception:
+        pass
+
+    output_data = {
+        "plan_id": plan.id, "plan_content": plan_content,
+        "source_refs": source_refs, "provider": provider,
+        "auto_dispatches": dispatches,
+    }
+    run.output_data = output_data
+    run.status = "completed"
+    run.finished_at = datetime.now(timezone.utc)
+    await db.flush()
+    await db.refresh(run)
+
+    return run
 
 
 @router.get("/generate/{agent_run_id}/stream")

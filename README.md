@@ -23,71 +23,68 @@
 
 ## 快速启动
 
-### 前置条件
-- Docker Desktop（运行 PostgreSQL、Redis）
-- Dify 自部署（Docker Compose）或 Cloud，用于 RAG 知识库检索
-- Python 3.12+
-- Node.js 20+
+### 方式一：本地开发（无 Docker 模式）
 
-### 1. 克隆
+**前置条件**: Python 3.12+ / Node.js 20+ / PostgreSQL 15+ / Redis 7
 
 ```bash
-git clone git@github.com:EclairFontaine/disaster-emergency-platform.git
-cd disaster-emergency-platform
-```
-
-### 2. 启动基础设施
-
-```bash
-# 启动 PostgreSQL + Redis
-docker compose up -d postgres redis
-```
-
-### 3. 配置
-
-```bash
+# 终端1: 启动后端（端口8000）
 cd backend
-cp .env.example .env
-```
+pip install -r requirements.txt
+uvicorn app.main:app --host 127.0.0.1 --port 8000
 
-编辑 `backend/.env`：
+# 终端2: 启动 AI 微服务（端口8001，可选）
+cd ai-service
+pip install -r requirements.txt
+uvicorn main:app --host 127.0.0.1 --port 8001
+# 启动后，在 backend/.env 中添加: AI_SERVICE_URL=http://127.0.0.1:8001
 
-```env
-# DeepSeek API（生成模型）
-DEEPSEEK_API_KEY=sk-your-deepseek-key
-
-# Dify RAG 知识库（自部署 Docker）
-DIFY_API_URL=http://localhost/v1
-DIFY_API_KEY=app-your-dify-api-key
-
-# 可选
-OPENWEATHER_API_KEY=your-key
-QWEATHER_API_KEY=your-key
-JWT_SECRET=yunnan-disaster-jwt-secret-2024
-```
-
-### 4. 启动前后端
-
-```bash
-# 终端1: 后端
-cd backend
-py -m pip install -r requirements.txt
-py -m uvicorn app.main:app --host 127.0.0.1 --port 8000
-
-# 终端2: 前端
+# 终端3: 启动前端（端口3000）
 cd frontend
 npm install
 npm run dev
 ```
 
-### 5. 访问
+> **不启动 ai-service 也能正常运行**：后端会自动降级为本地模式，AI 方案生成在原进程中完成。
+
+### 方式二：Docker Compose 一键启动（队友演示用）
+
+**前置条件**: Docker Desktop
+
+```bash
+# 1. 创建环境变量文件（放 DeepSeek key）
+echo DEEPSEEK_API_KEY=sk-your-key > .env
+
+# 2. 全部启动（PostgreSQL + Redis + 后端 + AI微服务 + 前端）
+docker compose up -d --build
+
+# 3. 访问
+# 前端: http://localhost:80
+# 后端API: http://localhost:8000/docs
+# AI服务: http://localhost:8001/docs
+```
+
+### 配置文件参考
+
+本地开发时复制 `backend/.env.example` 为 `backend/.env`，关键配置：
+
+```env
+DEEPSEEK_API_KEY=sk-your-key          # 必填，AI 方案生成
+DIFY_API_URL=http://localhost/v1       # 可选，RAG 知识库
+DIFY_API_KEY=app-your-key             # 可选
+AI_SERVICE_URL=http://127.0.0.1:8001  # 可选，启用 AI 微服务模式
+```
+
+### 访问地址
 
 | 服务 | 地址 |
 |------|------|
-| 前端 | http://127.0.0.1:3000 |
-| API文档 | http://127.0.0.1:8000/docs |
+| 前端 | http://127.0.0.1:3000 (本地) / http://localhost (Docker) |
+| 后端 API | http://127.0.0.1:8000/docs |
+| AI 服务 | http://127.0.0.1:8001/docs |
+| Swagger | 各服务 `/docs` 路径 |
 
-### 6. 账号
+### 账号
 
 | 角色 | 用户名 | 密码 |
 |------|--------|------|
@@ -106,6 +103,7 @@ npm run dev
 | 地图 | 高德地图 JS API 2.0 |
 | 状态 | Zustand |
 | 后端 | Python 3.12 + FastAPI + SQLAlchemy 2.0 (async) |
+| AI微服务 | Python 3.12 + FastAPI + SQLite（独立部署，REST+SSE） |
 | 数据库 | PostgreSQL 15 + PostGIS |
 | 缓存 | Redis 7 |
 | 实时推送 | WebSocket (JWT认证) + SSE (进度流) |
@@ -271,6 +269,12 @@ npx vitest run
 │   │   └── store/        # Zustand
 │   ├── vite.config.ts
 │   └── package.json
+├── ai-service/           # AI 方案生成微服务
+│   ├── main.py           # FastAPI 入口（端口8001）
+│   ├── routes.py         # generate/extract/review/runs API
+│   ├── clients/          # DeepSeek + Dify 客户端
+│   ├── engines/          # 3级降级引擎
+│   └── Dockerfile
 ├── scripts/
 │   └── export_kb_for_dify.py   # 导出预案为Dify知识库文档
 ├── tests/                # 后端测试套件（61+10个用例）

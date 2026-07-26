@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 1440
     CORS_ORIGINS: str = '["http://localhost:3000","http://127.0.0.1:3000","http://localhost:80","http://localhost"]'
+    AI_SERVICE_URL: str = ""
 
     @property
     def cors_origins_list(self) -> List[str]:
@@ -56,3 +57,5 @@ if os.path.exists(env_path):
                     settings.OPENWEATHER_API_KEY = v
                 elif k == "QWEATHER_API_KEY" and not settings.QWEATHER_API_KEY:
                     settings.QWEATHER_API_KEY = v
+                elif k == "AI_SERVICE_URL" and not settings.AI_SERVICE_URL:
+                    settings.AI_SERVICE_URL = v
