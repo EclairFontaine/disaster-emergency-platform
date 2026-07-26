@@ -1,4 +1,4 @@
-import { Component, ReactNode } from 'react'
+import React, { Component, ReactNode } from 'react'
 import { Button, Result } from 'antd'
 
 interface Props {

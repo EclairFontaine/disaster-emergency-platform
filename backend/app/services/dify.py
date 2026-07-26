@@ -63,7 +63,7 @@ class DifyClient:
             "POST", f"{self.base_url}/chat-messages", headers=headers, json=body
         ) as response:
             response.raise_for_status()
-            async for line in response.aiter_lines():
+            async for line in response.aiter_text():
                 if line.startswith("data: "):
                     data = line[6:]
                     yield data

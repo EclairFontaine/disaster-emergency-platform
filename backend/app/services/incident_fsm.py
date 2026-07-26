@@ -1,7 +1,7 @@
 STATES = ["pending_review", "confirmed", "in_progress", "closed"]
 
 TRANSITIONS = {
-    "pending_review": ["confirmed"],
+    "pending_review": ["confirmed", "closed"],
     "confirmed": ["in_progress", "closed"],
     "in_progress": ["closed"],
     "closed": [],

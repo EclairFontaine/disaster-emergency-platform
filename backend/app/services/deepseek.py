@@ -53,7 +53,7 @@ class DeepSeekClient:
             async def stream_generator() -> AsyncGenerator[str, None]:
                 async with client.stream("POST", f"{self.base_url}/chat/completions", headers=headers, json=body) as response:
                     response.raise_for_status()
-                    async for line in response.aiter_lines():
+                    async for line in response.aiter_text():
                         if line.startswith("data: "):
                             data = line[6:]
                             if data == "[DONE]":

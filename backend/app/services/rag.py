@@ -60,7 +60,7 @@ async def search_plans(db: AsyncSession, query_text: str, limit: int = 10):
     docs = list(_bm25_index.items())
     total_docs = len(docs)
     all_tokens = [t for _, tokens in docs for t in tokens]
-    avgdl = len(all_tokens) / max(total_docs, 1)
+    avgdl = max(len(all_tokens) / max(total_docs, 1), 1)  # avoid div by zero
 
     doc_term_freq = {}
     for term in set(query_tokens):

@@ -103,7 +103,7 @@ async def _generate_via_dify(db: AsyncSession, incident: Incident, agent_run: Ag
             ))
 
         agent_run.input_data = {
-            **agent_run.input_data,
+            **{**(agent_run.input_data or {})},
             "provider": "dify",
             "retrieved_docs": len(citations_data),
         }
@@ -142,7 +142,7 @@ async def _generate_via_deepseek(db: AsyncSession, incident: Incident, agent_run
                     "score": 1.0 - i * 0.15,
                 })
             hist_text = "\n".join(hist_lines)
-            agent_run.input_data = {**agent_run.input_data, "historical_events": len(hist_events)}
+            agent_run.input_data = {**(agent_run.input_data or {}), "historical_events": len(hist_events)}
 
         ref_text = "\n\n".join(plan_texts) if plan_texts else "暂无匹配参考预案"
         rag_context = f"{ref_text}\n\n{hist_text}" if hist_text else ref_text

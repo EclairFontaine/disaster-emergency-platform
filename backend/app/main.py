@@ -165,8 +165,12 @@ async def limit_body_size(request: Request, call_next):
     max_size = 10 * 1024 * 1024
     if request.method in ("POST", "PUT", "PATCH"):
         content_length = request.headers.get("content-length")
-        if content_length and int(content_length) > max_size:
-            return JSONResponse(status_code=413, content={"detail": "请求体过大，最大允许 10MB"})
+        if content_length:
+            try:
+                if int(content_length) > max_size:
+                    return JSONResponse(status_code=413, content={"detail": "请求体过大，最大允许 10MB"})
+            except ValueError:
+                return JSONResponse(status_code=400, content={"detail": "Content-Length 格式错误"})
     return await call_next(request)
 
 from app.api import auth, incidents, resources, plans, agent, datasources, users, websocket, audit, statistics, collector
