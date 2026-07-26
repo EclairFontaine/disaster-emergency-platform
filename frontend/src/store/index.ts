@@ -21,6 +21,8 @@ interface AppState {
   notifications: Notification[]
   pushNotification: (n: Notification) => void
   clearNotifications: () => void
+  darkMode: boolean
+  toggleDarkMode: () => void
 }
 
 interface Notification {
@@ -44,4 +46,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   hasRole: (roleName) => get().user?.role?.name === roleName,
   pushNotification: (n) => set((s) => ({ notifications: [n, ...s.notifications].slice(0, 50) })),
   clearNotifications: () => set({ notifications: [] }),
+  darkMode: localStorage.getItem('darkMode') === 'true',
+  toggleDarkMode: () => {
+    const next = !get().darkMode
+    localStorage.setItem('darkMode', String(next))
+    set({ darkMode: next })
+  },
 }))

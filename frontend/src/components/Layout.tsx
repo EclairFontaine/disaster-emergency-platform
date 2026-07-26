@@ -4,7 +4,7 @@ import { Layout, Menu, Button, Dropdown, Space, Typography, Badge, Drawer, List,
 import {
   DashboardOutlined, AlertOutlined, CheckCircleOutlined, FileTextOutlined,
   DatabaseOutlined, SettingOutlined, AuditOutlined, UserOutlined,
-  LogoutOutlined, EnvironmentOutlined, BellOutlined,
+  LogoutOutlined, EnvironmentOutlined, BellOutlined, SunOutlined, MoonOutlined,
 } from '@ant-design/icons'
 import { useState } from 'react'
 import { useAppStore } from '../store'
@@ -52,7 +52,7 @@ let notifId = 0
 export default function AppLayout() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { user, logout, notifications, pushNotification, clearNotifications } = useAppStore()
+  const { user, logout, notifications, pushNotification, clearNotifications, darkMode, toggleDarkMode } = useAppStore()
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   const handleWsEvent = (event: string, data: any) => {
@@ -75,14 +75,13 @@ export default function AppLayout() {
 
   return (
     <Layout>
-      <Sider width={220} theme="light" style={{ minHeight: '100vh' }}>
-        <div style={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid #e9ecef' }}>
-          <span style={{ fontSize: 16, fontWeight: 700, color: '#212529', letterSpacing: 0.5 }}>
+      <Sider width={220} style={{ minHeight: '100vh' }}>
+        <div style={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: `1px solid ${darkMode ? '#303030' : '#e9ecef'}` }}>
+          <span style={{ fontSize: 16, fontWeight: 700, color: darkMode ? '#e0e0e0' : '#212529', letterSpacing: 0.5 }}>
             应急协同决策平台
           </span>
         </div>
         <Menu
-          theme="light"
           mode="inline"
           selectedKeys={[selectedKey]}
           items={menus.map((m) => ({
@@ -94,8 +93,14 @@ export default function AppLayout() {
         />
       </Sider>
       <Layout>
-        <Header style={{ background: '#fff', padding: '0 24px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+        <Header style={{ padding: '0 24px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
           <Space>
+            <Button
+              type="text"
+              icon={darkMode ? <SunOutlined /> : <MoonOutlined />}
+              onClick={toggleDarkMode}
+              title={darkMode ? '切换亮色模式' : '切换暗色模式'}
+            />
             <Badge count={notifications.length} size="small">
               <Button type="text" icon={<BellOutlined />} onClick={() => setDrawerOpen(true)} />
             </Badge>
@@ -115,7 +120,7 @@ export default function AppLayout() {
             </Dropdown>
           </Space>
         </Header>
-        <Content style={{ margin: 16, padding: 24, background: '#fff', borderRadius: 8, minHeight: 360 }}>
+        <Content style={{ margin: 16, padding: 24, borderRadius: 8, minHeight: 360 }}>
           <Outlet />
         </Content>
       </Layout>

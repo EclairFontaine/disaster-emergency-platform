@@ -99,7 +99,7 @@ AI_SERVICE_URL=http://127.0.0.1:8001  # 可选，启用 AI 微服务模式
 
 | 层级 | 技术 |
 |------|------|
-| 前端 | React 18 + TypeScript + Ant Design 5 + Vite |
+| 前端 | React 18 + TypeScript + Ant Design 5 + Vite（支持暗色模式一键切换） |
 | 地图 | 高德地图 JS API 2.0 |
 | 状态 | Zustand |
 | 后端 | Python 3.12 + FastAPI + SQLAlchemy 2.0 (async) |

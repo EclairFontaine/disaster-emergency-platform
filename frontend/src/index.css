@@ -1,43 +1,48 @@
-/* ===== 博客风格设计系统 ===== */
+/* ===== 全局 ===== */
 * { box-sizing: border-box; }
 
 body {
   margin: 0;
   padding: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans', sans-serif;
-  background: #f8f9fa;
-  color: #2c3e50;
   -webkit-font-smoothing: antialiased;
   line-height: 1.6;
+  transition: background-color 0.3s, color 0.3s;
 }
 
 #root { min-height: 100vh; }
 
-/* ===== Layout ===== */
-.ant-layout { background: #f8f9fa !important; min-height: 100vh; }
+/* ===== 亮色模式（默认） ===== */
 
-.ant-layout-sider {
+html:not(.dark) body {
+  background: #f8f9fa;
+  color: #2c3e50;
+}
+
+html:not(.dark) .ant-layout { background: #f8f9fa !important; min-height: 100vh; }
+
+html:not(.dark) .ant-layout-sider {
   background: #fff !important;
   border-right: 1px solid #e9ecef !important;
   box-shadow: none !important;
 }
 
-.ant-menu-light {
+html:not(.dark) .ant-menu-light {
   background: #fff !important;
   border-right: none !important;
 }
 
-.ant-menu-light .ant-menu-item {
+html:not(.dark) .ant-menu-light .ant-menu-item {
   margin: 2px 8px !important;
   border-radius: 6px !important;
   font-size: 14px !important;
   color: #495057 !important;
 }
 
-.ant-menu-light .ant-menu-item:hover { background: #f1f3f5 !important; color: #212529 !important; }
-.ant-menu-light .ant-menu-item-selected { background: #e7f5ff !important; color: #1971c2 !important; font-weight: 600 !important; }
+html:not(.dark) .ant-menu-light .ant-menu-item:hover { background: #f1f3f5 !important; color: #212529 !important; }
+html:not(.dark) .ant-menu-light .ant-menu-item-selected { background: #e7f5ff !important; color: #1971c2 !important; font-weight: 600 !important; }
 
-.ant-layout-header {
+html:not(.dark) .ant-layout-header {
   background: #fff !important;
   border-bottom: 1px solid #e9ecef !important;
   height: 56px !important;
@@ -45,72 +50,73 @@ body {
   padding: 0 24px !important;
 }
 
-.ant-layout-content {
+html:not(.dark) .ant-layout-content {
   margin: 24px !important;
   padding: 0 !important;
   background: transparent !important;
 }
 
-/* ===== Card - 博客风 ===== */
-.ant-card {
+html:not(.dark) .ant-card {
   border-radius: 8px !important;
   border: 1px solid #e9ecef !important;
   box-shadow: none !important;
   background: #fff !important;
 }
 
-.ant-card-head {
+html:not(.dark) .ant-card-head {
   border-bottom: 1px solid #e9ecef !important;
   font-size: 16px !important;
   font-weight: 600 !important;
   color: #212529 !important;
 }
 
-/* ===== Statistic ===== */
-.ant-statistic-title { font-size: 13px !important; color: #868e96 !important; }
-.ant-statistic-content { font-size: 26px !important; font-weight: 700 !important; color: #212529 !important; }
+html:not(.dark) .ant-statistic-title { font-size: 13px !important; color: #868e96 !important; }
+html:not(.dark) .ant-statistic-content { font-size: 26px !important; font-weight: 700 !important; color: #212529 !important; }
 
-/* ===== Table ===== */
-.ant-table-thead > tr > th {
+html:not(.dark) .ant-table-thead > tr > th {
   background: #f8f9fa !important;
   color: #495057 !important;
   font-weight: 600 !important;
   border-bottom: 2px solid #dee2e6 !important;
 }
 
-.ant-table-tbody > tr > td { border-bottom: 1px solid #f1f3f5 !important; }
-.ant-table-tbody > tr:hover > td { background: #f8f9fa !important; }
+html:not(.dark) .ant-table-tbody > tr > td { border-bottom: 1px solid #f1f3f5 !important; }
+html:not(.dark) .ant-table-tbody > tr:hover > td { background: #f8f9fa !important; }
 
-/* ===== Tag ===== */
-.ant-tag { border-radius: 4px !important; font-size: 12px !important; }
+html:not(.dark) .ant-tag { border-radius: 4px !important; font-size: 12px !important; }
 
-/* ===== Button ===== */
-.ant-btn { border-radius: 6px !important; font-weight: 500 !important; }
-.ant-btn-primary { background: #1971c2 !important; border-color: #1971c2 !important; }
-.ant-btn-primary:hover { background: #1864ab !important; }
+html:not(.dark) .ant-btn { border-radius: 6px !important; font-weight: 500 !important; }
+html:not(.dark) .ant-btn-primary { background: #1971c2 !important; border-color: #1971c2 !important; }
+html:not(.dark) .ant-btn-primary:hover { background: #1864ab !important; }
 
-/* ===== Input/Select ===== */
-.ant-input, .ant-select-selector { border-radius: 6px !important; }
+html:not(.dark) .ant-input, html:not(.dark) .ant-select-selector { border-radius: 6px !important; }
 
-/* ===== Modal ===== */
-.ant-modal-content { border-radius: 8px !important; }
+html:not(.dark) .ant-modal-content { border-radius: 8px !important; }
 
-/* ===== Steps ===== */
-.ant-steps-item-finish .ant-steps-item-icon { background: #2b8a3e !important; border-color: #2b8a3e !important; }
+html:not(.dark) .ant-steps-item-finish .ant-steps-item-icon { background: #2b8a3e !important; border-color: #2b8a3e !important; }
 
-/* ===== 响应式 ===== */
-@media (max-width: 768px) {
-  .ant-layout-content { margin: 12px !important; }
-}
-
-/* ===== 滚动条 ===== */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #ced4da; border-radius: 3px; }
-
-/* ===== 地图占位 ===== */
-.map-placeholder {
+html:not(.dark) .map-placeholder {
   background: #f8f9fa !important;
   border: 1px dashed #dee2e6 !important;
   border-radius: 8px !important;
+}
+
+html:not(.dark) ::-webkit-scrollbar { width: 6px; }
+html:not(.dark) ::-webkit-scrollbar-track { background: transparent; }
+html:not(.dark) ::-webkit-scrollbar-thumb { background: #ced4da; border-radius: 3px; }
+
+/* ===== 暗色模式 ===== */
+
+html.dark .map-placeholder {
+  background: #1f1f1f !important;
+  border-color: #434343 !important;
+}
+
+html.dark ::-webkit-scrollbar { width: 6px; }
+html.dark ::-webkit-scrollbar-track { background: transparent; }
+html.dark ::-webkit-scrollbar-thumb { background: #434343; border-radius: 3px; }
+
+/* ===== 响应式 ===== */
+@media (max-width: 768px) {
+  html:not(.dark) .ant-layout-content { margin: 12px !important; }
 }
