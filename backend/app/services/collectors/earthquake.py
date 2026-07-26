@@ -21,7 +21,7 @@ class EarthquakeCollector(BaseCollector):
 
     async def collect(self) -> list[dict]:
         now = datetime.now(timezone.utc)
-        start = (now - timedelta(days=7)).strftime("%Y-%m-%d")
+        start = (now - timedelta(days=30)).strftime("%Y-%m-%d")
 
         params = {
             "format": "geojson",
