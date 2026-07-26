@@ -55,7 +55,7 @@ class TokenResponse(BaseModel):
 
 
 class IncidentCreate(BaseModel):
-    title: str = Field(min_length=2, max_length=256)
+    title: str = Field(min_length=1, max_length=256)
     description: Optional[str] = None
     category: Optional[str] = None
     severity: str = "P3"

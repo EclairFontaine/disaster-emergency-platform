@@ -39,9 +39,10 @@ export default function IncidentReport() {
     return false
   }
 
-  const onFinish = async (values: any) => {
-    setLoading(true)
+  const handleSubmit = async () => {
     try {
+      const values = await form.validateFields()
+      setLoading(true)
       const incident = await api.createIncident(values)
       if (images.length > 0) {
         await api.createReport(incident.id, {
@@ -56,7 +57,13 @@ export default function IncidentReport() {
       setImages([])
       loadReports()
     } catch (err: any) {
-      message.error(err.response?.data?.detail || '上报失败')
+      if (err?.errorFields) return  // validation error, antd shows it
+      const detail = err?.response?.data?.detail || err?.message || '上报失败'
+      if (err?.response?.status === 429) {
+        message.error('请求太频繁，请稍后再试')
+      } else {
+        message.error(detail)
+      }
     } finally {
       setLoading(false)
     }
@@ -73,7 +80,7 @@ export default function IncidentReport() {
   return (
     <div>
       <Card title="灾情上报" style={{ marginBottom: 16 }}>
-        <Form form={form} onFinish={onFinish} layout="vertical" initialValues={{ severity: 'P3', category: 'other' }}>
+        <Form form={form} layout="vertical" initialValues={{ severity: 'P3', category: 'other' }}>
           <Form.Item name="title" label="灾情标题" rules={[{ required: true, message: '请输入标题' }]}>
             <Input placeholder="简要描述灾情" />
           </Form.Item>
@@ -124,7 +131,7 @@ export default function IncidentReport() {
             )}
           </Form.Item>
 
-          <Button type="primary" htmlType="submit" loading={loading}>提交上报</Button>
+          <Button type="primary" loading={loading} onClick={handleSubmit}>提交上报</Button>
         </Form>
       </Card>
 

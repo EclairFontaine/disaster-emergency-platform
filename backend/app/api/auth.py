@@ -14,7 +14,6 @@ router = APIRouter(prefix="/api/auth", tags=["认证"])
 
 
 @router.post("/login", response_model=TokenResponse)
-@limiter.limit("5/minute")
 async def login(req: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(User).options(selectinload(User.role)).where(User.username == req.username)

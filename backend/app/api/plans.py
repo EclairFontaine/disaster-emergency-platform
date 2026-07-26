@@ -118,7 +118,6 @@ async def _run_generation_in_background(incident_id: int, agent_run_id: int):
 
 
 @router.post("/generate")
-@limiter.limit("3/minute")
 async def generate_plan(
     data: PlanGenerateRequest,
     request: Request,

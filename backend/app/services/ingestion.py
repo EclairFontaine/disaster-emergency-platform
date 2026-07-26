@@ -33,14 +33,14 @@ async def ingest_earthquake_events(db: AsyncSession) -> list[int]:
         )
         if existing.scalar_one_or_none():
             continue
-        # 二次去重: 同标题+邻近坐标
+        # 二次去重: 同标题+邻近坐标(0.2度~22km)
         nearby = await db.execute(
             select(CollectedEvent).where(
                 CollectedEvent.title == title,
-                CollectedEvent.latitude >= lat - 0.1,
-                CollectedEvent.latitude <= lat + 0.1,
-                CollectedEvent.longitude >= lng - 0.1,
-                CollectedEvent.longitude <= lng + 0.1,
+                CollectedEvent.latitude >= lat - 0.2,
+                CollectedEvent.latitude <= lat + 0.2,
+                CollectedEvent.longitude >= lng - 0.2,
+                CollectedEvent.longitude <= lng + 0.2,
             )
         )
         if nearby.scalar_one_or_none():

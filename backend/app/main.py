@@ -14,7 +14,7 @@ from app.core.security import hash_password
 from app.models.all import Role, User
 from sqlalchemy import select
 
-limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
+limiter = Limiter(key_func=get_remote_address, default_limits=["3000/minute"])
 
 
 async def scheduled_ingestion():
@@ -189,5 +189,6 @@ app.include_router(collector.router)
 
 
 @app.get("/api/health")
+@limiter.exempt
 async def health_check():
     return {"status": "ok", "name": settings.APP_NAME}
